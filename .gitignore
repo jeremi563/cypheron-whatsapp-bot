@@ -1,0 +1,20 @@
+# WhatsApp session — NEVER push this to GitHub
+# Anyone with this folder can use your WhatsApp account
+auth_info/
+
+# Node modules — too large to push, reinstalled with npm install
+node_modules/
+
+# Environment and config with sensitive data
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Assets — optional, comment out if you want to push them
+# assets/
