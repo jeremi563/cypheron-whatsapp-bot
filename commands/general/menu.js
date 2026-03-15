@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import config from '../config.js'
+import config from '../../config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -58,7 +58,7 @@ ${ownerCommands}
 
 _Powered by Cypheron Bot_`
 
-    const image = readFileSync(join(__dirname, '../assets/bot.jpg'))
+    const image = readFileSync(join(__dirname, '../../assets/bot.jpg'))
 
     await sock.sendMessage(chatJid, {
       image: image,

@@ -1,30 +1,44 @@
-import { readdirSync } from 'fs'
+import { readdirSync, statSync } from 'fs'
 import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { pathToFileURL, fileURLToPath } from 'url'
 import chalk from 'chalk'
 import config from './config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-export async function loadCommands() {
-  const commands = new Map()
-  const files = readdirSync(join(__dirname, 'commands'))
-    .filter(file => file.endsWith('.js'))
+async function loadCommandFiles(dir, commands) {
+  const files = readdirSync(dir)
 
   for (const file of files) {
-    const command = await import(`./commands/${file}`)
-    commands.set(command.default.name, command.default)
-    console.log(chalk.green(`✅ Loaded command: ${command.default.name}`))
+    const filePath = join(dir, file)
+    const isDirectory = statSync(filePath).isDirectory()
+
+    if (isDirectory) {
+      await loadCommandFiles(filePath, commands)
+    } else if (file.endsWith('.js')) {
+      try {
+        // ✅ convert Windows path to file:// URL for ES module compatibility
+        const command = await import(pathToFileURL(filePath).href)
+        commands.set(command.default.name, command.default)
+        console.log(chalk.green(`✅ Loaded command: ${command.default.name}`))
+      } catch (err) {
+        console.log(chalk.red(`❌ Failed to load command ${file}: ${err.message}`))
+      }
+    }
   }
+}
+
+export async function loadCommands() {
+  const commands = new Map()
+  const commandsDir = join(__dirname, 'commands')
+
+  await loadCommandFiles(commandsDir, commands)
 
   console.log(chalk.cyan(`ℹ️  Total commands loaded: ${commands.size}`))
   return commands
 }
 
-// helper function to check if a sender is the owner
 export function isOwner(sender) {
-  // in groups, sender looks like 254712345678@s.whatsapp.net
-  // we extract just the number part to compare
   const senderNumber = sender.replace('@s.whatsapp.net', '')
     .replace('@g.us', '')
     .split(':')[0]

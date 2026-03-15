@@ -1,4 +1,4 @@
-import config from '../config.js'
+import config from '../../config.js'
 import {
   startTracking,
   stopTracking,
@@ -7,7 +7,7 @@ import {
   getAllPresenceData,
   formatDuration,
   formatTime
-} from '../presence.js'
+} from '../../presence.js'
 
 export default {
   name: 'track',
