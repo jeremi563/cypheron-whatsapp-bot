@@ -18,3 +18,6 @@ npm-debug.log*
 
 # Assets — optional, comment out if you want to push them
 # assets/
+
+#MY private configuration file
+proxy.txt

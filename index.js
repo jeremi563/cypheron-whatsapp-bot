@@ -1,7 +1,8 @@
+import 'dotenv/config'
 import pkg from 'gifted-baileys'
 import pino from 'pino'
 import { Boom } from '@hapi/boom'
-import qrcode from 'qrcode-terminal'
+import qrcode2 from 'qrcode'
 import chalk from 'chalk'
 import ora from 'ora'
 import { readFileSync } from 'fs'
@@ -10,6 +11,8 @@ import { fileURLToPath } from 'url'
 import { loadCommands, isOwner } from './handler.js'
 import { shouldWelcome } from './cooldown.js'
 import { updatePresence } from './presence.js'
+import { startServer, sendQR, sendPairCode, sendConnected, sendStatus, sendError, serverState } from './server.js'
+import { decodeSession, hasValidSession } from './session.js'
 import config from './config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -31,7 +34,23 @@ const log = {
   reconnect: (msg) => console.log(chalk.blue('🔄 ' + msg)),
 }
 
+let globalMethod = 'qr'
+let globalPhone = null
+let serverStarted = false
+
 async function startBot() {
+
+  // ✅ decode session if provided
+  if (hasValidSession(config.sessionId)) {
+    log.info('Session ID found in config — loading session...')
+    const decoded = decodeSession(config.sessionId, './auth_info')
+    if (decoded) {
+      log.success('Session loaded successfully from Session ID!')
+    } else {
+      log.error('Failed to load session from Session ID. Please get a new one.')
+      process.exit(1)
+    }
+  }
 
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
 
@@ -40,12 +59,31 @@ async function startBot() {
 
   const commands = await loadCommands()
 
+  // ✅ only start web server once
+  if (!hasValidSession(config.sessionId) && !serverStarted) {
+    serverStarted = true
+    log.info('No session ID found — starting web panel...')
+    const result = await startServer()
+    globalMethod = result.method
+    globalPhone = result.phone
+    log.info(`Connection method: ${chalk.bold(globalMethod)}`)
+    if (globalPhone) log.info(`Phone number: ${chalk.bold(globalPhone)}`)
+  }
+
   const sock = makeWASocket({
     version,
     auth: state,
     logger: pino({ level: 'silent' }),
-    browser: Browsers.ubuntu('MyBot'),
+    // ✅ use macOS Chrome browser for pairing code
+    // ubuntu browser for QR code
+    browser: globalMethod === 'pair'
+      ? Browsers.macOS('Chrome')
+      : Browsers.ubuntu('MyBot'),
     markOnlineOnConnect: false,
+    // ✅ must be false for pairing code to work
+    printQRInTerminal: false,
+    // ✅ must be undefined to prevent timeout during pairing
+    defaultQueryTimeoutMs: globalMethod === 'pair' ? undefined : 30000,
   })
 
   sock.ev.on('creds.update', saveCreds)
@@ -58,31 +96,72 @@ async function startBot() {
 
   sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
 
-    if (qr) {
-      spinner.stop()
-      console.log(chalk.magenta('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'))
-      qrcode.generate(qr, { small: true })
-      console.log(chalk.magenta('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'))
-      log.qr('Scan the QR code above with your WhatsApp')
+    // ✅ request pairing code when QR fires
+    if (qr && globalMethod === 'pair' && globalPhone) {
+      if (!sock.authState.creds.registered && !serverState.pairingCodeRequested) {
+        try {
+          serverState.pairingCodeRequested = true
+          await new Promise(resolve => setTimeout(resolve, 3000))
+          const cleanPhone = globalPhone.replace(/[^0-9]/g, '')
+          const code = await sock.requestPairingCode(cleanPhone)
+          sendPairCode(code)
+          sendStatus('ENTER CODE IN WHATSAPP')
+          log.info(`Pairing code sent to web panel: ${chalk.bold(code)}`)
+        } catch (err) {
+          serverState.pairingCodeRequested = false
+          sendError(`Failed to generate pairing code: ${err.message}`)
+          log.error(`Pairing code error: ${err.message}`)
+        }
+      }
+      return
+    }
+
+    // ✅ send QR to web panel
+    if (qr && globalMethod === 'qr' && !hasValidSession(config.sessionId)) {
+      try {
+        const qrImage = await qrcode2.toDataURL(qr)
+        sendQR(qrImage)
+        sendStatus('SCAN QR CODE TO CONNECT')
+        log.info('QR code sent to web panel')
+      } catch (err) {
+        log.error(`QR generation error: ${err.message}`)
+      }
     }
 
     if (connection === 'close') {
       spinner.stop()
+
+      if (!hasValidSession(config.sessionId)) {
+        sendStatus('CONNECTION LOST — RECONNECTING')
+      }
+
       const shouldReconnect =
         new Boom(lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut
 
       if (shouldReconnect) {
         log.reconnect('Connection lost. Reconnecting...')
+        serverState.pairingCodeRequested = false
         startBot()
       } else {
         log.error('Logged out. Delete the auth_info folder and restart.')
+        if (!hasValidSession(config.sessionId)) {
+          sendStatus('LOGGED OUT — RESTART BOT')
+        }
       }
 
     } else if (connection === 'connecting') {
+      if (!hasValidSession(config.sessionId)) {
+        sendStatus('CONNECTING TO WHATSAPP')
+      }
       spinner.text = chalk.cyan('Connecting to WhatsApp...')
       spinner.start()
 
     } else if (connection === 'open') {
+      if (!hasValidSession(config.sessionId)) {
+        sendConnected()
+        sendStatus('BOT ONLINE')
+      }
+
       spinner.succeed(chalk.green('CYPHERON Bot connected successfully!'))
       log.success('Bot is live and ready to receive messages!')
       console.log(chalk.gray('─────────────────────────────────'))
@@ -105,7 +184,6 @@ async function startBot() {
 
       log.info('Startup message and audio sent to your WhatsApp!')
 
-      // auto start bio if enabled in config
       if (config.autoBio) {
         const { startAutoBio } = await import('./commands/autobio.js')
         startAutoBio(sock)
@@ -121,14 +199,12 @@ async function startBot() {
 
       for (const msg of messages) {
 
-        // ✅ handle status updates separately
         if (msg.key.remoteJid === 'status@broadcast') {
           if (msg.key.fromMe || !msg.message) continue
 
           const statusPoster = msg.key.participant || msg.key.remoteJid
           log.info(`📺 Status from: ${chalk.yellow(statusPoster)}`)
 
-          // auto view
           if (config.autoViewStatus) {
             try {
               await sock.readMessages([msg.key])
@@ -138,7 +214,6 @@ async function startBot() {
             }
           }
 
-          // auto like
           if (config.autoLikeStatus) {
             try {
               await sock.sendMessage(statusPoster, {
@@ -153,7 +228,6 @@ async function startBot() {
             }
           }
 
-          // auto reply
           if (config.autoReplyStatus) {
             try {
               await sock.sendMessage(statusPoster, {
@@ -169,7 +243,6 @@ async function startBot() {
           continue
         }
 
-        // ✅ handle normal messages
         if (type !== 'notify') continue
         if (!msg.message) continue
 
@@ -183,12 +256,10 @@ async function startBot() {
 
         const body = text.trim()
 
-        // if message is from self only process if it starts with prefix
         if (msg.key.fromMe && !body.startsWith(config.prefix)) continue
 
         log.info(`${isGroup ? '👥 Group' : '👤 Private'} | From: ${chalk.yellow(sender)}: ${chalk.white(body)}`)
 
-        // auto welcome logic
         if (!isGroup && !isOwner(sender) && !msg.key.fromMe) {
           if (shouldWelcome(sender)) {
             await sock.sendMessage(chatJid, {
@@ -212,30 +283,25 @@ _This is an automated message._`,
           }
         }
 
-        // auto react to private messages
         if (!isGroup && !msg.key.fromMe && config.autoReact) {
           try {
             const randomEmoji = config.reactEmojis[
               Math.floor(Math.random() * config.reactEmojis.length)
             ]
-
             await sock.sendMessage(chatJid, {
               react: {
                 text: randomEmoji,
                 key: msg.key
               }
             })
-
             log.success(`⚡ Auto reacted with ${randomEmoji} to message from ${chalk.yellow(sender)}`)
           } catch (err) {
             log.error(`Auto react error: ${err.message}`)
           }
         }
 
-        // ignore messages that don't start with the prefix
         if (!body.startsWith(config.prefix)) continue
 
-        // extract command name by removing the prefix
         const commandName = body.slice(config.prefix.length).trim().toLowerCase()
 
         log.info(`Command received: ${chalk.bold(commandName)} from ${chalk.yellow(sender)}`)
@@ -244,7 +310,6 @@ _This is an automated message._`,
 
         if (command) {
 
-          // check if command is owner only
           if (command.ownerOnly && !isOwner(sender)) {
             await sock.sendMessage(chatJid, {
               text: `❌ *This command is for the bot owner only.*`,
@@ -280,15 +345,12 @@ _This is an automated message._`,
     }
   })
 
-  // ✅ listen for presence updates
   sock.ev.on('presence.update', ({ id, presences }) => {
     try {
       for (const [participant, presence] of Object.entries(presences)) {
         const jid = id || participant
         const status = presence.lastKnownPresence
-
         updatePresence(jid, status)
-
         log.info(`📡 Presence — ${chalk.yellow(jid)}: ${chalk.bold(status)}`)
       }
     } catch (err) {

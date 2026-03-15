@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cypheron — Get Session ID</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #0a0a0a;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,255,0,0.03) 2px,
+        rgba(0,255,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    .header { margin-bottom: 25px; }
+
+    .header h1 {
+      font-size: 2.2rem;
+      letter-spacing: 4px;
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    .header p {
+      color: #00aa00;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 10px #00ff00; }
+      to { text-shadow: 0 0 30px #00ff00, 0 0 60px #00ff00; }
+    }
+
+    .card {
+      background: #0f0f0f;
+      border: 1px solid #00ff00;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 0 30px rgba(0,255,0,0.1);
+      margin-bottom: 15px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #003300;
+      border-radius: 8px;
+      background: #050f05;
+    }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ff6600;
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.connected { background: #00ff00; }
+    .status-dot.error { background: #ff0000; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .status-text {
+      font-size: 0.78rem;
+      letter-spacing: 2px;
+      color: #00aa00;
+    }
+
+    .method-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .method-btn {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: 1px solid #00ff00;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .method-btn:hover, .method-btn.active {
+      background: #00ff00;
+      color: #0a0a0a;
+      box-shadow: 0 0 20px rgba(0,255,0,0.4);
+    }
+
+    .section { display: none; }
+    .section.visible { display: block; }
+
+    .qr-wrapper {
+      background: #fff;
+      padding: 15px;
+      border-radius: 12px;
+      margin: 0 auto 15px;
+      width: fit-content;
+      box-shadow: 0 0 30px rgba(0,255,0,0.3);
+      min-width: 200px;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-wrapper img { width: 200px; height: 200px; display: block; }
+
+    .input-group { margin-bottom: 12px; text-align: left; }
+
+    .input-group label {
+      display: block;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      color: #00aa00;
+      margin-bottom: 6px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px 15px;
+      background: #050f05;
+      border: 1px solid #00ff00;
+      border-radius: 8px;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .input-group input:focus {
+      box-shadow: 0 0 15px rgba(0,255,0,0.3);
+    }
+
+    .input-group input::placeholder { color: #004400; }
+
+    .action-btn {
+      width: 100%;
+      padding: 13px;
+      background: transparent;
+      border: 1px solid #00ff00;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      letter-spacing: 3px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      margin-bottom: 15px;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      background: #00ff00;
+      color: #0a0a0a;
+      box-shadow: 0 0 20px rgba(0,255,0,0.4);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* pair code display */
+    .pair-code-wrapper {
+      position: relative;
+      margin-bottom: 15px;
+    }
+
+    .pair-code {
+      font-size: 2.5rem;
+      letter-spacing: 8px;
+      padding: 20px 20px 20px 20px;
+      border: 2px solid #00ff00;
+      border-radius: 12px;
+      background: #050f05;
+      animation: glow 1.5s ease-in-out infinite alternate;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      user-select: all;
+    }
+
+    .pair-code:hover {
+      box-shadow: 0 0 30px rgba(0,255,0,0.5);
+    }
+
+    .copy-code-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 5px 10px;
+      background: #00ff00;
+      color: #0a0a0a;
+      border: none;
+      border-radius: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.7rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+    }
+
+    .copy-code-btn:hover {
+      box-shadow: 0 0 10px rgba(0,255,0,0.6);
+      transform: scale(1.05);
+    }
+
+    .copy-code-btn.copied {
+      background: #004400;
+      color: #00ff00;
+    }
+
+    /* session ID box */
+    .session-box {
+      background: #050f05;
+      border: 1px solid #00ff00;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      word-break: break-all;
+      font-size: 0.7rem;
+      line-height: 1.6;
+      color: #00ff00;
+      text-align: left;
+      max-height: 120px;
+      overflow-y: auto;
+      cursor: pointer;
+    }
+
+    .copy-btn {
+      width: 100%;
+      padding: 12px;
+      background: #00ff00;
+      border: none;
+      color: #0a0a0a;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      letter-spacing: 3px;
+      cursor: pointer;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      margin-bottom: 12px;
+    }
+
+    .copy-btn:hover {
+      box-shadow: 0 0 20px rgba(0,255,0,0.6);
+      transform: scale(1.02);
+    }
+
+    .copy-btn.copied {
+      background: #004400;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+    }
+
+    .instructions {
+      color: #00aa00;
+      font-size: 0.75rem;
+      line-height: 1.9;
+      letter-spacing: 1px;
+      text-align: left;
+      padding: 12px 15px;
+      border: 1px solid #003300;
+      border-radius: 8px;
+      background: #050f05;
+    }
+
+    .error-box {
+      display: none;
+      color: #ff4444;
+      font-size: 0.8rem;
+      padding: 10px;
+      border: 1px solid #ff4444;
+      border-radius: 8px;
+      background: #1a0000;
+      margin-bottom: 12px;
+    }
+
+    .error-box.visible { display: block; }
+
+    .connected-screen { text-align: center; }
+
+    .connected-icon {
+      font-size: 3.5rem;
+      margin-bottom: 12px;
+      animation: bounce 1s ease infinite alternate;
+    }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-8px); }
+    }
+
+    .connected-title {
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      margin-bottom: 5px;
+      text-shadow: 0 0 20px #00ff00;
+    }
+
+    .connected-number {
+      color: #00aa00;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    .spinner {
+      width: 35px; height: 35px;
+      border: 3px solid #003300;
+      border-top: 3px solid #00ff00;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 15px auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ✅ music prompt modal */
+    .music-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .music-modal.visible {
+      display: flex;
+    }
+
+    .music-modal-card {
+      background: #0f0f0f;
+      border: 1px solid #00ff00;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(0,255,0,0.2);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .music-modal-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      animation: bounce 1s ease infinite alternate;
+    }
+
+    .music-modal-title {
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+      text-shadow: 0 0 10px #00ff00;
+    }
+
+    .music-modal-subtitle {
+      color: #00aa00;
+      font-size: 0.78rem;
+      letter-spacing: 1px;
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .music-modal-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .music-yes-btn, .music-no-btn {
+      flex: 1;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .music-yes-btn {
+      background: #00ff00;
+      color: #0a0a0a;
+      border: none;
+      font-weight: bold;
+    }
+
+    .music-yes-btn:hover {
+      box-shadow: 0 0 20px rgba(0,255,0,0.5);
+      transform: scale(1.02);
+    }
+
+    .music-no-btn {
+      background: transparent;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+    }
+
+    .music-no-btn:hover {
+      background: #001100;
+    }
+
+    /* ✅ music player */
+    .music-player {
+      display: none;
+      background: #0f0f0f;
+      border: 1px solid #00ff00;
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 0 20px rgba(0,255,0,0.1);
+    }
+
+    .music-player.visible { display: block; }
+
+    .music-player-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .music-player-title {
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      color: #00aa00;
+    }
+
+    .music-visualizer {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 20px;
+    }
+
+    .music-bar {
+      width: 4px;
+      background: #00ff00;
+      border-radius: 2px;
+      animation: musicBar 0.8s ease infinite alternate;
+    }
+
+    .music-bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+    .music-bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+    .music-bar:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+    .music-bar:nth-child(4) { height: 18px; animation-delay: 0.3s; }
+    .music-bar:nth-child(5) { height: 8px; animation-delay: 0.4s; }
+
+    @keyframes musicBar {
+      from { transform: scaleY(1); }
+      to { transform: scaleY(0.3); }
+    }
+
+    .music-bar.paused {
+      animation: none;
+      height: 4px !important;
+    }
+
+    .song-name {
+      font-size: 0.8rem;
+      color: #00ff00;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* progress bar */
+    .progress-bar-wrapper {
+      width: 100%;
+      height: 4px;
+      background: #003300;
+      border-radius: 2px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #00ff00;
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.5s linear;
+      box-shadow: 0 0 8px #00ff00;
+    }
+
+    .music-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .ctrl-btn {
+      background: transparent;
+      border: 1px solid #00ff00;
+      color: #00ff00;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-btn:hover {
+      background: #00ff00;
+      color: #0a0a0a;
+      box-shadow: 0 0 15px rgba(0,255,0,0.4);
+    }
+
+    .ctrl-btn.play-pause {
+      width: 44px;
+      height: 44px;
+      font-size: 1.1rem;
+    }
+
+    .ctrl-btn.stop-btn {
+      border-color: #ff4444;
+      color: #ff4444;
+    }
+
+    .ctrl-btn.stop-btn:hover {
+      background: #ff4444;
+      color: #0a0a0a;
+      box-shadow: 0 0 15px rgba(255,68,68,0.4);
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .volume-label {
+      font-size: 0.7rem;
+      color: #00aa00;
+      letter-spacing: 1px;
+      min-width: 30px;
+    }
+
+    .volume-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: #003300;
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #00ff00;
+      cursor: pointer;
+      box-shadow: 0 0 6px #00ff00;
+    }
+
+    .footer {
+      color: #004400;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      margin-top: 5px;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #00ff00; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ✅ music prompt modal -->
+<div class="music-modal visible" id="musicModal">
+  <div class="music-modal-card">
+    <div class="music-modal-icon">🎵</div>
+    <div class="music-modal-title">BACKGROUND MUSIC</div>
+    <div class="music-modal-subtitle">
+      Would you like to play background<br>
+      music while connecting your bot?
+    </div>
+    <div class="music-modal-btns">
+      <button class="music-yes-btn" onclick="startMusic()">
+        ▶ YES PLEASE
+      </button>
+      <button class="music-no-btn" onclick="dismissMusic()">
+        ✕ NO THANKS
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="header">
+    <h1>⚡ CYPHERON</h1>
+    <p>GET YOUR SESSION ID</p>
+  </div>
+
+  <!-- ✅ music player -->
+  <div class="music-player" id="musicPlayer">
+    <div class="music-player-header">
+      <span class="music-player-title">🎵 NOW PLAYING</span>
+      <div class="music-visualizer" id="visualizer">
+        <div class="music-bar"></div>
+        <div class="music-bar"></div>
+        <div class="music-bar"></div>
+        <div class="music-bar"></div>
+        <div class="music-bar"></div>
+      </div>
+    </div>
+    <div class="song-name" id="songName">Loading...</div>
+    <div class="progress-bar-wrapper" onclick="seekMusic(event)">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="music-controls">
+      <button class="ctrl-btn" onclick="prevSong()" title="Previous">⏮</button>
+      <button class="ctrl-btn play-pause" id="playPauseBtn" onclick="togglePlayPause()" title="Play/Pause">⏸</button>
+      <button class="ctrl-btn" onclick="nextSong()" title="Next">⏭</button>
+      <button class="ctrl-btn stop-btn" onclick="stopMusic()" title="Stop">⏹</button>
+    </div>
+    <div class="volume-control">
+      <span class="volume-label">🔊</span>
+      <input
+        type="range"
+        class="volume-slider"
+        id="volumeSlider"
+        min="0" max="1" step="0.05"
+        value="0.5"
+        oninput="setVolume(this.value)"
+      />
+      <span class="volume-label" id="volumeLabel">50%</span>
+    </div>
+  </div>
+
+  <div class="card" id="mainCard">
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">SELECT CONNECTION METHOD</span>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="method-selector" id="methodSelector">
+      <button class="method-btn active" id="qrBtn" onclick="switchMethod('qr')">
+        📷 QR CODE
+      </button>
+      <button class="method-btn" id="pairBtn" onclick="switchMethod('pair')">
+        🔗 PAIR CODE
+      </button>
+    </div>
+
+    <!-- QR section -->
+    <div class="section visible" id="qrSection">
+      <div style="text-align:center">
+        <button class="action-btn" id="qrStartBtn" onclick="startQR()">
+          📷 GENERATE QR CODE
+        </button>
+      </div>
+      <div class="qr-wrapper" id="qrWrapper" style="display:none">
+        <div class="spinner"></div>
+      </div>
+      <div class="instructions" id="qrInstructions" style="display:none">
+        1. Open WhatsApp on your phone<br>
+        2. Go to Settings → Linked Devices<br>
+        3. Tap "Link a Device"<br>
+        4. Scan the QR code above
+      </div>
+    </div>
+
+    <!-- pair section -->
+    <div class="section" id="pairSection">
+      <div class="input-group">
+        <label>PHONE NUMBER (COUNTRY CODE + NUMBER)</label>
+        <input
+          type="tel"
+          id="phoneInput"
+          placeholder="254712345678"
+          maxlength="15"
+        />
+      </div>
+      <button class="action-btn" id="pairStartBtn" onclick="startPair()">
+        🔗 GENERATE PAIRING CODE
+      </button>
+      <div id="pairCodeBox" style="display:none">
+        <div class="pair-code-wrapper">
+          <div class="pair-code" id="pairCodeText" onclick="copyPairCode()">--------</div>
+          <button class="copy-code-btn" id="copyCodeBtn" onclick="copyPairCode()">
+            📋 COPY
+          </button>
+        </div>
+        <div class="instructions">
+          1. Open WhatsApp on your phone<br>
+          2. Go to Settings → Linked Devices<br>
+          3. Tap "Link a Device"<br>
+          4. Tap "Link with phone number instead"<br>
+          5. Enter the code above<br>
+          ⚠️ Code expires in 60 seconds — be quick!
+        </div>
+      </div>
+    </div>
+
+    <!-- session ID screen -->
+    <div class="section" id="sessionSection">
+      <div class="connected-screen">
+        <div class="connected-icon">🤖</div>
+        <div class="connected-title">SESSION READY!</div>
+        <div class="connected-number" id="connectedNumber"></div>
+      </div>
+      <div class="session-box" id="sessionBox" onclick="copySession()"></div>
+      <button class="copy-btn" id="copyBtn" onclick="copySession()">
+        📋 COPY SESSION ID
+      </button>
+      <div class="instructions">
+        1. Copy the Session ID above<br>
+        2. Open your bot's <strong>config.js</strong> file<br>
+        3. Paste it as the <strong>sessionId</strong> value<br>
+        4. Run <strong>npm start</strong><br>
+        5. Your bot is now live! ✅<br>
+        ⚠️ Never share your Session ID with anyone!
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">CYPHERON BOT © 2026 — POWERED BY GIFTED-BAILEYS</div>
+
+</div>
+
+<script>
+  const socket = io()
+  let currentMethod = 'qr'
+  let sessionId = null
+  let pairCode = null
+
+  // ✅ music system
+  const songs = [
+    { name: 'Song 1', src: '/music/song1.mp3' },
+    { name: 'Song 2', src: '/music/song2.mp3' },
+    { name: 'Song 3', src: '/music/song3.mp3' },
+  ]
+
+  const audio = new Audio()
+  audio.volume = 0.5
+  let currentSongIndex = 0
+  let isPlaying = false
+  let musicEnabled = false
+
+  // update progress bar
+  audio.addEventListener('timeupdate', () => {
+    if (audio.duration) {
+      const progress = (audio.currentTime / audio.duration) * 100
+      document.getElementById('progressBar').style.width = `${progress}%`
+    }
+  })
+
+  // auto play next song when current ends
+  audio.addEventListener('ended', () => {
+    nextSong()
+  })
+
+  function startMusic() {
+    document.getElementById('musicModal').classList.remove('visible')
+    musicEnabled = true
+    document.getElementById('musicPlayer').classList.add('visible')
+    loadSong(currentSongIndex)
+    playAudio()
+  }
+
+  function dismissMusic() {
+    document.getElementById('musicModal').classList.remove('visible')
+    musicEnabled = false
+  }
+
+  function loadSong(index) {
+    const song = songs[index]
+    audio.src = song.src
+    document.getElementById('songName').textContent = song.name
+    document.getElementById('progressBar').style.width = '0%'
+  }
+
+  function playAudio() {
+    audio.play().then(() => {
+      isPlaying = true
+      document.getElementById('playPauseBtn').textContent = '⏸'
+      document.querySelectorAll('.music-bar').forEach(bar => {
+        bar.classList.remove('paused')
+      })
+    }).catch(() => {
+      // autoplay blocked — user needs to interact first
+    })
+  }
+
+  function togglePlayPause() {
+    if (isPlaying) {
+      audio.pause()
+      isPlaying = false
+      document.getElementById('playPauseBtn').textContent = '▶'
+      document.querySelectorAll('.music-bar').forEach(bar => {
+        bar.classList.add('paused')
+      })
+    } else {
+      playAudio()
+    }
+  }
+
+  function nextSong() {
+    currentSongIndex = (currentSongIndex + 1) % songs.length
+    loadSong(currentSongIndex)
+    if (isPlaying || musicEnabled) playAudio()
+  }
+
+  function prevSong() {
+    currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length
+    loadSong(currentSongIndex)
+    if (isPlaying || musicEnabled) playAudio()
+  }
+
+  function stopMusic() {
+    audio.pause()
+    audio.currentTime = 0
+    isPlaying = false
+    document.getElementById('playPauseBtn').textContent = '▶'
+    document.getElementById('progressBar').style.width = '0%'
+    document.querySelectorAll('.music-bar').forEach(bar => {
+      bar.classList.add('paused')
+    })
+  }
+
+  function setVolume(value) {
+    audio.volume = value
+    document.getElementById('volumeLabel').textContent = `${Math.round(value * 100)}%`
+  }
+
+  function seekMusic(event) {
+    const bar = event.currentTarget
+    const rect = bar.getBoundingClientRect()
+    const clickX = event.clientX - rect.left
+    const percentage = clickX / rect.width
+    if (audio.duration) {
+      audio.currentTime = percentage * audio.duration
+    }
+  }
+
+  // ✅ copy pairing code
+  function copyPairCode() {
+    if (!pairCode) return
+    navigator.clipboard.writeText(pairCode).then(() => {
+      const btn = document.getElementById('copyCodeBtn')
+      btn.textContent = '✅ COPIED!'
+      btn.classList.add('copied')
+      setTimeout(() => {
+        btn.textContent = '📋 COPY'
+        btn.classList.remove('copied')
+      }, 3000)
+    })
+  }
+
+  // ✅ copy session ID
+  function copySession() {
+    if (!sessionId) return
+    navigator.clipboard.writeText(sessionId).then(() => {
+      const btn = document.getElementById('copyBtn')
+      btn.textContent = '✅ COPIED!'
+      btn.classList.add('copied')
+      setTimeout(() => {
+        btn.textContent = '📋 COPY SESSION ID'
+        btn.classList.remove('copied')
+      }, 3000)
+    })
+  }
+
+  function switchMethod(method) {
+    currentMethod = method
+    document.getElementById('qrBtn').classList.toggle('active', method === 'qr')
+    document.getElementById('pairBtn').classList.toggle('active', method === 'pair')
+    document.getElementById('qrSection').classList.toggle('visible', method === 'qr')
+    document.getElementById('pairSection').classList.toggle('visible', method === 'pair')
+    hideError()
+  }
+
+  function startQR() {
+    const btn = document.getElementById('qrStartBtn')
+    btn.disabled = true
+    btn.textContent = '⏳ CONNECTING...'
+    document.getElementById('qrWrapper').style.display = 'flex'
+    document.getElementById('qrInstructions').style.display = 'block'
+    document.getElementById('qrWrapper').innerHTML = '<div class="spinner"></div>'
+    hideError()
+    socket.emit('start-qr')
+  }
+
+  function startPair() {
+    const phone = document.getElementById('phoneInput').value.trim()
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    hideError()
+
+    if (!cleanPhone || cleanPhone.length < 7) {
+      showError('Please enter a valid phone number with country code. Example: 254712345678')
+      return
+    }
+
+    const btn = document.getElementById('pairStartBtn')
+    btn.disabled = true
+    btn.textContent = '⏳ GENERATING CODE...'
+
+    socket.emit('start-pair', cleanPhone)
+  }
+
+  function showError(message) {
+    const box = document.getElementById('errorBox')
+    box.textContent = '❌ ' + message
+    box.classList.add('visible')
+    document.getElementById('statusDot').classList.add('error')
+    document.getElementById('qrStartBtn').disabled = false
+    document.getElementById('qrStartBtn').textContent = '📷 GENERATE QR CODE'
+    document.getElementById('pairStartBtn').disabled = false
+    document.getElementById('pairStartBtn').textContent = '🔗 GENERATE PAIRING CODE'
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('visible')
+    document.getElementById('statusDot').classList.remove('error')
+  }
+
+  // receive QR code
+  socket.on('qr', (qrImage) => {
+    document.getElementById('qrWrapper').innerHTML =
+      `<img src="${qrImage}" alt="QR Code"/>`
+  })
+
+  // receive pairing code
+  socket.on('pair-code', (code) => {
+    pairCode = code
+    document.getElementById('pairCodeBox').style.display = 'block'
+    document.getElementById('pairCodeText').textContent = code
+    const btn = document.getElementById('pairStartBtn')
+    btn.disabled = false
+    btn.textContent = '🔗 GENERATE PAIRING CODE'
+  })
+
+  socket.on('pair-error', (message) => {
+    showError(message)
+  })
+
+  socket.on('session-id', (id) => {
+    sessionId = id
+    document.getElementById('sessionBox').textContent = id
+  })
+
+  socket.on('connected', (number) => {
+    document.getElementById('methodSelector').style.display = 'none'
+    document.getElementById('qrSection').classList.remove('visible')
+    document.getElementById('pairSection').classList.remove('visible')
+    document.getElementById('sessionSection').classList.add('visible')
+    document.getElementById('connectedNumber').textContent = `+${number}`
+    document.getElementById('statusDot').classList.add('connected')
+  })
+
+  socket.on('status', (message) => {
+    document.getElementById('statusText').textContent = message
+  })
+
+  socket.on('error', (message) => {
+    showError(message)
+  })
+</script>
+
+</body>
+</html>
