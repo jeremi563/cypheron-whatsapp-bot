@@ -12,7 +12,11 @@ export default {
   async execute(sock, chatJid, sender, msg, commands) {
 
     const now = new Date()
-    const time = now.toLocaleTimeString()
+    const time = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
     const date = now.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -20,49 +24,165 @@ export default {
       day: 'numeric'
     })
 
-    // separate commands into owner only and public
-    const ownerCommands = [...commands.values()]
-      .filter(cmd => cmd.ownerOnly && cmd.name !== 'menu')
-      .map((cmd, index) => `│  ${index + 1}. ${config.prefix}${cmd.name} — ${cmd.description}`)
-      .join('\n')
+    // ✅ organize commands by category
+    const categories = {
+      '🌍 General': [],
+      '👑 Owner': [],
+      '🎮 Fun': [],
+      '🔧 Utility': [],
+      '🔍 Search': [],
+      '🎵 Media': [],
+      '👥 Group': [],
+      '⬇️ Downloader': [],
+    }
 
-    const publicCommands = [...commands.values()]
-      .filter(cmd => !cmd.ownerOnly && cmd.name !== 'menu')
-      .map((cmd, index) => `│  ${index + 1}. ${config.prefix}${cmd.name} — ${cmd.description}`)
-      .join('\n')
+    // ✅ map command names to their categories
+    const categoryMap = {
+      // general
+      menu: '🌍 General',
+      ping: '🌍 General',
+      hello: '🌍 General',
+      time: '🌍 General',
+      date: '🌍 General',
+      info: '🌍 General',
+      about: '🌍 General',
+      runtime: '🌍 General',
+      uptime: '🌍 General',
+      owner: '🌍 General',
+      rules: '🌍 General',
+      support: '🌍 General',
+
+      // owner
+      autobio: '👑 Owner',
+      autoreact: '👑 Owner',
+      autostatus: '👑 Owner',
+      autotyping: '👑 Owner',
+      autorecording: '👑 Owner',
+      typing: '👑 Owner',
+      recording: '👑 Owner',
+      track: '👑 Owner',
+      restart: '👑 Owner',
+      shutdown: '👑 Owner',
+      eval: '👑 Owner',
+      setprefix: '👑 Owner',
+      block: '👑 Owner',
+      unblock: '👑 Owner',
+      getid: '👑 Owner',
+      autowelcome: '👑 Owner',
+
+      // fun
+      fact: '🎮 Fun',
+      truth: '🎮 Fun',
+      insult: '🎮 Fun',
+      ship: '🎮 Fun',
+      meme: '🎮 Fun',
+
+      // utility
+      password: '🔧 Utility',
+      calculate: '🔧 Utility',
+      qr: '🔧 Utility',
+      base64: '🔧 Utility',
+      shortlink: '🔧 Utility',
+
+      // search
+      weather: '🔍 Search',
+      news: '🔍 Search',
+      github: '🔍 Search',
+      movie: '🔍 Search',
+      lyrics: '🔍 Search',
+
+      // media
+      sticker: '🎵 Media',
+      toimg: '🎵 Media',
+      tomp3: '🎵 Media',
+      tovideo: '🎵 Media',
+      tts: '🎵 Media',
+
+      // group
+      groupinfo: '👥 Group',
+      setname: '👥 Group',
+      setdesc: '👥 Group',
+      revoke: '👥 Group',
+      welcome: '👥 Group',
+      goodbye: '👥 Group',
+      antilink: '👥 Group',
+      antispam: '👥 Group',
+
+      // downloader
+      tiktok: '⬇️ Downloader',
+      yt: '⬇️ Downloader',
+      instagram: '⬇️ Downloader',
+      facebook: '⬇️ Downloader',
+      twitter: '⬇️ Downloader',
+    }
+
+    // ✅ fill categories with commands
+    for (const [name, command] of commands) {
+      const category = categoryMap[name]
+      if (category && categories[category] !== undefined) {
+        categories[category].push({ name, description: command.description })
+      }
+    }
+
+    // ✅ build each category section
+    const buildSection = (title, cmds) => {
+      if (cmds.length === 0) return ''
+      const list = cmds.map(cmd => `│  ➤ ${cmd.name}`).join('\n')
+      return `╔══════════════════════════╗\n║ ${title.padEnd(25)}║\n╠══════════════════════════╣\n${list}\n╚══════════════════════════╝\n`
+    }
+
+    const generalSection = buildSection('🌍 GENERAL', categories['🌍 General'])
+    const ownerSection = buildSection('👑 OWNER ONLY', categories['👑 Owner'])
+    const funSection = buildSection('🎮 FUN', categories['🎮 Fun'])
+    const utilitySection = buildSection('🔧 UTILITY', categories['🔧 Utility'])
+    const searchSection = buildSection('🔍 SEARCH', categories['🔍 Search'])
+    const mediaSection = buildSection('🎵 MEDIA', categories['🎵 Media'])
+    const groupSection = buildSection('👥 GROUP', categories['👥 Group'])
+    const downloaderSection = buildSection('⬇️ DOWNLOADER', categories['⬇️ Downloader'])
+
+    const totalCommands = commands.size
 
     const menuText =
-`╔════════════════════════╗
-║       🤖 CYPHERON       ║
-╚════════════════════════╝
+`╔══════════════════════════╗
+║   🤖 CYPHERON BOT MENU   ║
+╚══════════════════════════╝
 
-📅 ${date}
-🕐 ${time}
+👤 *User:* @${sender.replace('@s.whatsapp.net', '')}
+📅 *Date:* ${date}
+🕐 *Time:* ${time}
+⚡ *Prefix:* ${config.prefix}
+📊 *Commands:* ${totalCommands}
 
-╔════════════════════════╗
-║    🌍 PUBLIC COMMANDS   ║
-╠════════════════════════╣
-${publicCommands}
-╚════════════════════════╝
+_Type ${config.prefix}<command> to use_
+_Example: ${config.prefix}ping_
 
-╔════════════════════════╗
-║  👑 OWNER COMMANDS      ║
-╠════════════════════════╣
-${ownerCommands}
-╚════════════════════════╝
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-╔════════════════════════╗
-║  💡 Type any command   ║
-║  above to get started  ║
-╚════════════════════════╝
+${generalSection}
+${funSection}
+${utilitySection}
+${searchSection}
+${mediaSection}
+${groupSection}
+${downloaderSection}
+${ownerSection}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-_Powered by Cypheron Bot_`
+🔗 *GitHub:*
+https://github.com/jeremi563/my-bot
+
+📢 *Channel:*
+https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+_Powered by Cypheron Bot 🤖_`
 
     const image = readFileSync(join(__dirname, '../../assets/bot.jpg'))
 
     await sock.sendMessage(chatJid, {
       image: image,
       caption: menuText,
+      mentions: [sender],
+      detectLinks: true,
       quoted: msg
     })
 

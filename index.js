@@ -9,10 +9,16 @@ import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { loadCommands, isOwner } from './handler.js'
-import { shouldWelcome } from './cooldown.js'
+import { shouldWelcome, markSenderActive } from './cooldown.js'
 import { updatePresence } from './presence.js'
 import { startServer, sendQR, sendPairCode, sendConnected, sendStatus, sendError, serverState } from './server.js'
 import { decodeSession, hasValidSession } from './session.js'
+import { handleWelcome } from './commands/group/welcome.js'
+import { handleGoodbye } from './commands/group/goodbye.js'
+import { checkAntiLink } from './commands/group/antilink.js'
+import { checkAntiSpam } from './commands/group/antispam.js'
+import { sendTyping } from './commands/owner/autotyping.js'
+import { sendRecording } from './commands/owner/autorecording.js'
 import config from './config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -74,15 +80,11 @@ async function startBot() {
     version,
     auth: state,
     logger: pino({ level: 'silent' }),
-    // ✅ use macOS Chrome browser for pairing code
-    // ubuntu browser for QR code
     browser: globalMethod === 'pair'
       ? Browsers.macOS('Chrome')
       : Browsers.ubuntu('MyBot'),
     markOnlineOnConnect: false,
-    // ✅ must be false for pairing code to work
     printQRInTerminal: false,
-    // ✅ must be undefined to prevent timeout during pairing
     defaultQueryTimeoutMs: globalMethod === 'pair' ? undefined : 30000,
   })
 
@@ -184,8 +186,9 @@ async function startBot() {
 
       log.info('Startup message and audio sent to your WhatsApp!')
 
+      // auto start bio if enabled in config
       if (config.autoBio) {
-        const { startAutoBio } = await import('./commands/autobio.js')
+        const { startAutoBio } = await import('./commands/owner/autobio.js')
         startAutoBio(sock)
         log.info('Auto bio started automatically!')
       }
@@ -199,6 +202,7 @@ async function startBot() {
 
       for (const msg of messages) {
 
+        // ✅ handle status updates
         if (msg.key.remoteJid === 'status@broadcast') {
           if (msg.key.fromMe || !msg.message) continue
 
@@ -243,6 +247,7 @@ async function startBot() {
           continue
         }
 
+        // ✅ handle normal messages
         if (type !== 'notify') continue
         if (!msg.message) continue
 
@@ -260,6 +265,19 @@ async function startBot() {
 
         log.info(`${isGroup ? '👥 Group' : '👤 Private'} | From: ${chalk.yellow(sender)}: ${chalk.white(body)}`)
 
+        // ✅ auto typing and recording
+        if (!msg.key.fromMe) {
+          await sendTyping(sock, chatJid)
+          await sendRecording(sock, chatJid)
+        }
+
+        // ✅ antilink and antispam checks
+        if (isGroup && !msg.key.fromMe) {
+          await checkAntiLink(sock, msg, chatJid, sender)
+          await checkAntiSpam(sock, msg, chatJid, sender)
+        }
+
+        // ✅ auto welcome logic — check BEFORE marking active
         if (!isGroup && !isOwner(sender) && !msg.key.fromMe) {
           if (shouldWelcome(sender)) {
             await sock.sendMessage(chatJid, {
@@ -283,6 +301,13 @@ _This is an automated message._`,
           }
         }
 
+        // ✅ mark sender as active AFTER welcome check
+        // this helps detect hidden last seen users correctly
+        if (!msg.key.fromMe && !isGroup) {
+          markSenderActive(sender)
+        }
+
+        // auto react
         if (!isGroup && !msg.key.fromMe && config.autoReact) {
           try {
             const randomEmoji = config.reactEmojis[
@@ -345,6 +370,25 @@ _This is an automated message._`,
     }
   })
 
+  // ✅ group participants update — welcome and goodbye
+  sock.ev.on('group-participants.update', async ({ id, participants, action }) => {
+    try {
+      const groupMetadata = await sock.groupMetadata(id)
+
+      if (action === 'add') {
+        handleWelcome(sock, id, participants, groupMetadata)
+        log.info(`👋 Welcome message sent in ${chalk.yellow(id)}`)
+      } else if (action === 'remove' || action === 'leave') {
+        handleGoodbye(sock, id, participants, groupMetadata)
+        log.info(`👋 Goodbye message sent in ${chalk.yellow(id)}`)
+      }
+
+    } catch (err) {
+      log.error(`Group participants update error: ${err.message}`)
+    }
+  })
+
+  // ✅ presence updates
   sock.ev.on('presence.update', ({ id, presences }) => {
     try {
       for (const [participant, presence] of Object.entries(presences)) {

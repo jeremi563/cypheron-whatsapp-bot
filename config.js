@@ -6,7 +6,7 @@ const config = {
   owner: '254712345678@s.whatsapp.net',
   autoBio: true,
 
-  // ✅ session ID now loaded from .env file — never hardcoded
+  // ✅ session ID loaded from .env
   sessionId: process.env.SESSION_ID || '',
 
   // auto status settings
@@ -19,6 +19,16 @@ const config = {
   // auto react settings
   autoReact: true,
   reactEmojis: ['❤️', '🔥', '👁️', '🤖', '👏', '🦴', '💯', '✨', '📌', '⚡'],
+
+  // group settings
+  antilink: false,
+  antispam: false,
+  welcome: false,
+  goodbye: false,
+
+  // search API keys
+gnewsApiKey: process.env.GNEWS_API_KEY || '',
+omdbApiKey: process.env.OMDB_API_KEY || '',
 }
 
 export default config

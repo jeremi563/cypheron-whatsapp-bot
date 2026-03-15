@@ -46,6 +46,15 @@ const config = {
 npm start
 ```
 
+## 🚀 Quick Setup
+```bash
+git clone https://github.com/jeremi563/my-bot.git
+cd my-bot
+npm run setup
+```
+
+That's it! The setup wizard will handle everything automatically.
+
 ### **Step 5: Scan QR Code**
 Scan the QR code that appears in your terminal with your WhatsApp and your bot is live!
 
