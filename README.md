@@ -1,189 +1,118 @@
-<!-- Glowing Header -->
+<!-- Header -->
 <p align="center">
   <img src="https://i.imgur.com/dBaSKWF.gif" height="40" width="100%">
 </p>
 
 <h1 align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=25&duration=3000&color=00FF00&background=000000&center=true&vCenter=true&width=600&lines=🤖+CYPHERON+BOT;🔥+WhatsApp+Automation;💻+Built+with+Node.js;⚡+Powered+by+gifted-baileys" alt="Typing Animation">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=25&duration=3000&color=00FF00&background=000000&center=true&vCenter=true&width=600&lines=🤖+CYPHERON+BOT;🔥+WhatsApp+Automation;⚡+Powered+by+gifted-baileys" alt="Typing Animation">
 </h1>
 
-<!-- Banner Image -->
 <p align="center">
-  <img src="./assets/bot.jpg" width="85%" height="auto">
+  <img src="./assets/bot.jpg" width="80%" height="auto">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-20%2B-green?style=for-the-badge&logo=node.js" />
+  <img src="https://img.shields.io/badge/Platform-WhatsApp-25d366?style=for-the-badge&logo=whatsapp" />
+  <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/github/stars/jeremi563/cypheron-whatsapp-bot?style=for-the-badge&color=FFD700" />
 </p>
 
 ---
 
-## 📌 **How to Set Up Cypheron Bot**
+## 🔑 Get Your Session ID
 
-### **Step 1: Clone the Repository**
-```bash
-git clone https://github.com/jeremi563/cypheron-whatsapp-bot.git
-cd cypheron-bot
-```
+<p align="center">
+  <a href="https://cypheron-session.onrender.com" target="_blank">
+    <img src="https://img.shields.io/badge/🔑_GET_SESSION_ID-000000?style=for-the-badge&color=00FF00" width="280" height="48"/>
+  </a>
+</p>
 
-### **Step 2: Install Dependencies**
-```bash
-npm install
-```
-
-### **Step 3: Configure the Bot**
-Open `config.js` and update your details:
-```js
-const config = {
-  prefix: '!',
-  botName: 'CYPHERON',
-  owner: 'YOUR_NUMBER@s.whatsapp.net',
-  autoBio: true,
-  autoViewStatus: true,
-  autoLikeStatus: true,
-  autoReact: true,
-}
-```
-
-### **Step 4: Run the Bot**
-```bash
-npm start
-```
+---
 
 ## 🚀 Quick Setup
 ```bash
-git clone https://github.com/jeremi563/my-bot.git
-cd my-bot
+git clone https://github.com/jeremi563/cypheron-whatsapp-bot.git
+cd cypheron-whatsapp-bot
 npm run setup
 ```
 
-That's it! The setup wizard will handle everything automatically.
-
-### **Step 5: Scan QR Code**
-Scan the QR code that appears in your terminal with your WhatsApp and your bot is live!
+> The setup wizard handles everything automatically. Just follow the prompts.
 
 ---
 
-## ✨ **Features**
+## ✨ Features
 
-<div align="center">
-
-| Feature | Status |
-|---|---|
-| 🤖 Auto Bio with Live Clock | ✅ Active |
-| 👁️ Auto View Status | ✅ Active |
-| ❤️ Auto Like Status | ✅ Active |
-| 💬 Auto Reply to Status | ✅ Active |
-| ⚡ Auto React to Messages | ✅ Active |
-| 👋 Auto Welcome Message | ✅ Active |
-| 📡 Contact Presence Tracker | ✅ Active |
-| 🔒 Owner Only Commands | ✅ Active |
-| 👥 Group & Private Chat Support | ✅ Active |
-| 🔄 Auto Reconnect | ✅ Active |
-
-</div>
+- 🤖 Auto bio with live clock
+- 👁️ Auto view, like and reply to statuses
+- ⚡ Auto react to messages
+- ⌨️ Auto typing and recording indicators
+- 👋 Auto welcome with smart cooldown
+- 🔗 Anti link and anti spam protection
+- 📡 Contact presence tracker
+- 🎵 Media conversion and downloading
+- 🔍 Search — weather, news, movies, lyrics
+- 🎮 Fun commands — facts, memes, truth, ship
+- 🔧 Utility — QR, calculator, password, base64
+- 👥 Full group management support
+- 🔒 Owner only commands
+- 🌐 Web connection panel
 
 ---
 
-## 📋 **Commands**
-
-### 🌍 Public Commands
-<div align="center">
-
-| Command | Description |
-|---|---|
-| !menu | Show all available commands |
-| !ping | Check if bot is alive + response time |
-| !hello | Greet the bot |
-| !time | Get current time |
-| !date | Get current date |
-
-</div>
-
-### 👑 Owner Commands
-<div align="center">
-
-| Command | Description |
-|---|---|
-| !autobio on/off | Toggle live auto updating bio |
-| !autoreact on/off | Toggle auto react to messages |
-| !autostatus | Manage status settings |
-| !track add/remove/report | Track contact online presence |
-
-</div>
-
----
-
-## 📁 **Project Structure**
-```
-cypheron-bot/
-├── 📁 assets/
-│   ├── bot.jpg
-│   └── startup.mp3
-├── 📁 commands/
-│   ├── autobio.js
-│   ├── autoreact.js
-│   ├── autostatus.js
-│   ├── date.js
-│   ├── hello.js
-│   ├── menu.js
-│   ├── ping.js
-│   ├── time.js
-│   └── track.js
-├── 📄 config.js
-├── 📄 cooldown.js
-├── 📄 handler.js
-├── 📄 index.js
-├── 📄 presence.js
-└── 📄 package.json
-```
-
----
-
-## 🚀 **Deploy**
+## 🚀 Deploy
 
 <p align="center">
   <a href="https://render.com" target="_blank">
-    <img src="https://img.shields.io/badge/🚀_RENDER-000000?style=for-the-badge&color=61DAFB" width="200" height="45"/>
+    <img src="https://img.shields.io/badge/🚀_RENDER-000000?style=for-the-badge&color=61DAFB" width="180" height="42"/>
   </a>
   <a href="https://railway.app" target="_blank">
-    <img src="https://img.shields.io/badge/🚀_RAILWAY-000000?style=for-the-badge&color=purple" width="200" height="45"/>
+    <img src="https://img.shields.io/badge/🚀_RAILWAY-000000?style=for-the-badge&color=purple" width="180" height="42"/>
   </a>
 </p>
 
 ---
 
-## ⚠️ **Important Notes**
+## ⚠️ Security
 
-> 🔴 **Never share your `auth_info` folder** — it contains your WhatsApp session and anyone with it can access your account.
+> 🔴 Never share your **Session ID** or **auth_info** folder with anyone.
 
-> 🔴 **Never push `auth_info` to GitHub** — it is already in `.gitignore` but double check before pushing.
+> 🔴 Never push your **.env** file to GitHub.
 
-> 🟡 **Use a secondary WhatsApp number** for running bots to keep your main number safe.
+> 🟡 Use a **secondary WhatsApp number** to keep your main number safe.
 
 ---
 
-## 📢 **Stay Updated**
+## 📢 Stay Updated
 
 <p align="center">
-  <a href="https://github.com/yourusername/cypheron-bot" target="_blank">
-    <img src="https://img.shields.io/badge/⭐_STAR_THIS_REPO-000000?style=for-the-badge&color=FFD700" width="300" height="50"/>
+  <a href="https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438" target="_blank">
+    <img src="https://img.shields.io/badge/📢_WHATSAPP_CHANNEL-25d366?style=for-the-badge&logo=whatsapp" width="280" height="48"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/jeremi563/cypheron-whatsapp-bot" target="_blank">
+    <img src="https://img.shields.io/badge/⭐_STAR_THIS_REPO-000000?style=for-the-badge&color=FFD700" width="280" height="48"/>
   </a>
 </p>
 
 ---
 
-## 📊 **Stats**
+## 📊 Stats
 
 <p align="center">
-  <img src="https://komarev.com/ghpvc/?username=yourusername&label=Profile+Views&color=00FF00&style=for-the-badge" alt="Views"/>
-  <img src="https://img.shields.io/github/followers/yourusername?label=GitHub+Followers&style=for-the-badge&color=00FF00" alt="Followers"/>
+  <img src="https://komarev.com/ghpvc/?username=jeremi563&label=Profile+Views&color=00FF00&style=for-the-badge"/>
+  <img src="https://img.shields.io/github/followers/jeremi563?label=Followers&style=for-the-badge&color=00FF00"/>
+  <img src="https://img.shields.io/github/forks/jeremi563/cypheron-whatsapp-bot?label=Forks&style=for-the-badge&color=blue"/>
 </p>
 
 ---
 
-## 🟢 **Status**
+## 🟢 Status
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Bwmxmd254/Bwmxmd254/main/assets/statusbar.gif" height="25">
   <br>
-  <span style="font-size:1.2em; color:#00FF00;">Status: <b>🟢 ONLINE</b></span>
+  <b style="color:#00FF00;">🟢 ONLINE</b>
 </p>
 
 ---
@@ -194,5 +123,5 @@ cypheron-bot/
 </p>
 
 <p align="center">
-  <strong>CYPHERON BOT © 2026 | Built with ❤️ using Node.js & gifted-baileys</strong>
+  <strong>CYPHERON BOT © 2026 | Developed by Jeremia Obed</strong>
 </p>
