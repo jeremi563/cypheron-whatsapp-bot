@@ -15,13 +15,15 @@ export default {
     const time = now.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: 'Africa/Nairobi'
     })
     const date = now.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'Africa/Nairobi'
     })
 
     // ✅ organize commands by category
