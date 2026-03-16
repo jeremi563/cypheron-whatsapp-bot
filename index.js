@@ -47,9 +47,6 @@ let serverStarted = false
 
 async function startBot() {
 
-  // ✅ start keep-alive server for Render web service
-  startKeepAlive()
-
   // ✅ decode session if provided
   if (hasValidSession(config.sessionId)) {
     log.info('Session ID found in config — loading session...')
@@ -417,4 +414,8 @@ process.on('unhandledRejection', (err) => {
   log.error(`Unhandled rejection: ${err?.message}`)
 })
 
+// ✅ start keep-alive server ONCE outside startBot
+startKeepAlive()
+
+// ✅ start the bot
 startBot()
