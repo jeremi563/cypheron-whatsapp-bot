@@ -45,6 +45,9 @@ let globalMethod = 'qr'
 let globalPhone = null
 let serverStarted = false
 
+// ✅ prevent duplicate message processing
+const processedMessages = new Set()
+
 async function startBot() {
 
   // ✅ decode session if provided
@@ -144,7 +147,8 @@ async function startBot() {
       if (shouldReconnect) {
         log.reconnect('Connection lost. Reconnecting...')
         serverState.pairingCodeRequested = false
-        startBot()
+        // ✅ safer reconnect delay
+        setTimeout(() => startBot(), 5000)
       } else {
         log.error('Logged out. Delete the auth_info folder and restart.')
         if (!hasValidSession(config.sessionId)) {
@@ -174,7 +178,13 @@ async function startBot() {
 
       await sock.sendMessage(botNumber, {
         image: image,
-        caption: `╔════════════════════════╗\n║       🤖 CYPHERON       ║\n╚════════════════════════╝\n\n✅ Cypheron is now connected and ready!\nType *${config.prefix}menu* to see all available commands.`
+        caption:
+`╔════════════════════════╗
+║       🤖 CYPHERON       ║
+╚════════════════════════╝
+
+✅ Cypheron is now connected and ready!
+Type *${config.prefix}menu* to see all available commands.`
       })
 
       const audio = readFileSync(join(__dirname, './assets/startup.mp3'))
@@ -187,7 +197,7 @@ async function startBot() {
 
       log.info('Startup message and audio sent to your WhatsApp!')
 
-      // auto start bio if enabled in config
+      // ✅ auto start bio if enabled in config
       if (config.autoBio) {
         const { startAutoBio } = await import('./commands/owner/autobio.js')
         startAutoBio(sock)
@@ -203,9 +213,18 @@ async function startBot() {
 
       for (const msg of messages) {
 
-        // ✅ handle status updates
-        if (msg.key.remoteJid === 'status@broadcast') {
-          if (msg.key.fromMe || !msg.message) continue
+        if (!msg.message) continue
+
+        // ✅ prevent duplicate message processing
+        if (processedMessages.has(msg.key.id)) continue
+        processedMessages.add(msg.key.id)
+
+        const chatJid = msg.key.remoteJid
+        if (!chatJid) continue
+
+        // ✅ handle status updates separately
+        if (chatJid === 'status@broadcast') {
+          if (msg.key.fromMe) continue
 
           const statusPoster = msg.key.participant || msg.key.remoteJid
           log.info(`📺 Status from: ${chalk.yellow(statusPoster)}`)
@@ -248,20 +267,21 @@ async function startBot() {
           continue
         }
 
-        // ✅ handle normal messages
-        if (type !== 'notify') continue
-        if (!msg.message) continue
-
-        const chatJid = msg.key.remoteJid
         const isGroup = chatJid.endsWith('@g.us')
         const sender = isGroup ? msg.key.participant : chatJid
 
         const text =
           msg.message?.conversation ||
-          msg.message?.extendedTextMessage?.text || ''
+          msg.message?.extendedTextMessage?.text ||
+          msg.message?.imageMessage?.caption ||
+          msg.message?.videoMessage?.caption || ''
 
         const body = text.trim()
 
+        // ✅ ignore very long messages
+        if (body.length > 2000) continue
+
+        // ✅ ignore self messages that dont start with prefix
         if (msg.key.fromMe && !body.startsWith(config.prefix)) continue
 
         log.info(`${isGroup ? '👥 Group' : '👤 Private'} | From: ${chalk.yellow(sender)}: ${chalk.white(body)}`)
@@ -307,7 +327,7 @@ _This is an automated message._`,
           markSenderActive(sender)
         }
 
-        // auto react
+        // ✅ auto react to private messages
         if (!isGroup && !msg.key.fromMe && config.autoReact) {
           try {
             const randomEmoji = config.reactEmojis[
@@ -319,15 +339,20 @@ _This is an automated message._`,
                 key: msg.key
               }
             })
-            log.success(`⚡ Auto reacted with ${randomEmoji} to message from ${chalk.yellow(sender)}`)
+            log.success(`⚡ Auto reacted with ${randomEmoji} to ${chalk.yellow(sender)}`)
           } catch (err) {
             log.error(`Auto react error: ${err.message}`)
           }
         }
 
+        // ✅ ignore messages that dont start with prefix
         if (!body.startsWith(config.prefix)) continue
 
-        const commandName = body.slice(config.prefix.length).trim().toLowerCase()
+        // ✅ extract command name and args
+        const args = body.slice(config.prefix.length).trim().split(/ +/)
+        const commandName = args.shift()?.toLowerCase()
+
+        if (!commandName) continue
 
         log.info(`Command received: ${chalk.bold(commandName)} from ${chalk.yellow(sender)}`)
 
@@ -335,20 +360,21 @@ _This is an automated message._`,
 
         if (command) {
 
+          // ✅ check owner only
           if (command.ownerOnly && !isOwner(sender)) {
             await sock.sendMessage(chatJid, {
               text: `❌ *This command is for the bot owner only.*`,
               quoted: msg
             })
-            log.warn(`Unauthorized use of owner command: ${commandName} by ${sender}`)
+            log.warn(`Unauthorized: ${commandName} by ${sender}`)
             continue
           }
 
           try {
-            await command.execute(sock, chatJid, sender, msg, commands)
-            log.success(`Executed command: ${chalk.bold(commandName)} for ${chalk.yellow(sender)}`)
+            await command.execute(sock, chatJid, sender, msg, commands, args)
+            log.success(`Executed: ${chalk.bold(commandName)} for ${chalk.yellow(sender)}`)
           } catch (err) {
-            log.error(`Failed to execute command: ${commandName} — ${err.message}`)
+            log.error(`Command error ${commandName}: ${err.message}`)
             await sock.sendMessage(chatJid, {
               text: '❌ Something went wrong running that command.',
               quoted: msg
@@ -377,10 +403,12 @@ _This is an automated message._`,
 
       if (action === 'add') {
         handleWelcome(sock, id, participants, groupMetadata)
-        log.info(`👋 Welcome message sent in ${chalk.yellow(id)}`)
-      } else if (action === 'remove' || action === 'leave') {
+        log.info(`👋 Welcome sent in ${chalk.yellow(id)}`)
+      }
+
+      if (action === 'remove' || action === 'leave') {
         handleGoodbye(sock, id, participants, groupMetadata)
-        log.info(`👋 Goodbye message sent in ${chalk.yellow(id)}`)
+        log.info(`👋 Goodbye sent in ${chalk.yellow(id)}`)
       }
 
     } catch (err) {
@@ -395,7 +423,9 @@ _This is an automated message._`,
         const jid = id || participant
         const status = presence.lastKnownPresence
         updatePresence(jid, status)
-        log.info(`📡 Presence — ${chalk.yellow(jid)}: ${chalk.bold(status)}`)
+        if (config.debugPresence) {
+          log.info(`📡 Presence — ${chalk.yellow(jid)}: ${chalk.bold(status)}`)
+        }
       }
     } catch (err) {
       log.error(`Presence update error: ${err.message}`)

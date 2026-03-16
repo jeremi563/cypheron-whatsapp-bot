@@ -4,6 +4,7 @@ const config = {
   prefix: '!',
   botName: 'CYPHERON',
   owner: '254731242169@s.whatsapp.net',
+
    timezone: 'Africa/Nairobi',
   autoBio: true,
 
