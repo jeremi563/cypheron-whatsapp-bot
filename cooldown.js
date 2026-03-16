@@ -5,7 +5,7 @@ const firstTimeSenders = new Set()
 const COOLDOWN_TIME = 30 * 60 * 1000
 
 // ✅ track if welcome is enabled globally
-let welcomeEnabled = true
+let welcomeEnabled = false
 
 export function setWelcomeEnabled(value) {
   welcomeEnabled = value

@@ -3,7 +3,7 @@ import 'dotenv/config'
 const config = {
   prefix: '!',
   botName: 'CYPHERON',
-  owner: '254712345678@s.whatsapp.net',
+  owner: '254731242169@s.whatsapp.net',
   autoBio: true,
 
   // ✅ session ID loaded from .env
@@ -11,7 +11,7 @@ const config = {
 
   // auto status settings
   autoViewStatus: true,
-  autoLikeStatus: false,
+  autoLikeStatus: true,
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',
@@ -24,7 +24,7 @@ const config = {
   antilink: false,
   antispam: false,
   welcome: false,
-  goodbye: false,
+  goodbye: true,
 
   // search API keys
 gnewsApiKey: process.env.GNEWS_API_KEY || '',
