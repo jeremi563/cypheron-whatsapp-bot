@@ -39,11 +39,36 @@ export async function loadCommands() {
 }
 
 export function isOwner(sender) {
-  const senderNumber = sender.replace('@s.whatsapp.net', '')
+  if (!sender) return false
+
+  // ✅ clean sender — handle all possible JID formats
+  // handles: 254712345678@s.whatsapp.net
+  // handles: 254712345678:5@s.whatsapp.net
+  // handles: 254712345678@lid
+  // handles: 186784386445322@lid
+  const senderNumber = sender
+    .replace('@s.whatsapp.net', '')
+    .replace('@lid', '')
     .replace('@g.us', '')
     .split(':')[0]
+    .trim()
 
-  const ownerNumber = config.owner.replace('@s.whatsapp.net', '')
+  // ✅ clean owner number from config
+  const ownerNumber = config.owner
+    .replace('@s.whatsapp.net', '')
+    .replace('@lid', '')
+    .replace('@g.us', '')
+    .split(':')[0]
+    .trim()
 
-  return senderNumber === ownerNumber
+  const isMatch = senderNumber === ownerNumber
+
+  if (!isMatch) {
+    // ✅ debug log to see what is being compared
+    console.log(
+      chalk.yellow(`⚠️  Owner check failed — sender: ${senderNumber} | owner: ${ownerNumber}`)
+    )
+  }
+
+  return isMatch
 }
