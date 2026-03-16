@@ -33,7 +33,7 @@ export default {
 
 🟢 *Status:* Online
 ⏰ *Running for:* ${runtime}
-📅 *Started at:* ${new Date(startTime).toLocaleString( )}
+📅 *Started at:* ${new Date(startTime).toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}
 
 _Cypheron is always online for you!_`,
       quoted: msg
