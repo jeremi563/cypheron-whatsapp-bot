@@ -1,16 +1,25 @@
 {
   "name": "my-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "A powerful WhatsApp bot built with Node.js and Gifted Baileys",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "setup": "node setup.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "baileys",
+    "nodejs",
+    "automation"
+  ],
+  "author": "Jeremia Obed",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "chalk": "^5.6.2",

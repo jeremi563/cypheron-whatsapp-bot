@@ -19,6 +19,7 @@ import { checkAntiLink } from './commands/group/antilink.js'
 import { checkAntiSpam } from './commands/group/antispam.js'
 import { sendTyping } from './commands/owner/autotyping.js'
 import { sendRecording } from './commands/owner/autorecording.js'
+import { startKeepAlive } from './server-keep-alive.js'
 import config from './config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -45,6 +46,9 @@ let globalPhone = null
 let serverStarted = false
 
 async function startBot() {
+
+  // ✅ start keep-alive server for Render web service
+  startKeepAlive()
 
   // ✅ decode session if provided
   if (hasValidSession(config.sessionId)) {
@@ -302,7 +306,6 @@ _This is an automated message._`,
         }
 
         // ✅ mark sender as active AFTER welcome check
-        // this helps detect hidden last seen users correctly
         if (!msg.key.fromMe && !isGroup) {
           markSenderActive(sender)
         }
@@ -370,7 +373,7 @@ _This is an automated message._`,
     }
   })
 
-  // ✅ group participants update — welcome and goodbye
+  // ✅ group participants update
   sock.ev.on('group-participants.update', async ({ id, participants, action }) => {
     try {
       const groupMetadata = await sock.groupMetadata(id)
