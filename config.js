@@ -11,7 +11,7 @@ const config = {
 
   // auto status settings
   autoViewStatus: true,
-  autoLikeStatus: true,
+  autoLikeStatus: false,
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',

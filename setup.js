@@ -1,4 +1,4 @@
-import { execSync, spawn } from 'child_process'
+import { spawn } from 'child_process'
 import { existsSync, copyFileSync, readFileSync, writeFileSync } from 'fs'
 import { createInterface } from 'readline'
 import { dirname, join } from 'path'
@@ -17,9 +17,6 @@ const colors = {
   magenta: '\x1b[35m',
   blue: '\x1b[34m',
   white: '\x1b[37m',
-  bgGreen: '\x1b[42m',
-  bgBlue: '\x1b[44m',
-  bgMagenta: '\x1b[45m',
 }
 
 const c = (color, text) => `${colors[color]}${text}${colors.reset}`
@@ -32,7 +29,6 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 async function spinner(text, task, successText) {
   const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
   let i = 0
-  let done = false
   let error = null
 
   const interval = setInterval(() => {
@@ -59,7 +55,7 @@ async function spinner(text, task, successText) {
 }
 
 // ✅ progress bar
-async function progressBar(text, steps, delay = 50) {
+async function progressBar(text, delay = 30) {
   const total = 30
   process.stdout.write(`\n${c('cyan', text)}\n`)
 
@@ -117,9 +113,9 @@ async function checkNodeVersion() {
     const version = process.version
     const major = parseInt(version.slice(1).split('.')[0])
 
-    if (major < 20) {
+    if (major < 18) {
       throw new Error(
-        `Node.js ${version} is not supported. Please upgrade to Node.js v20 or higher.`
+        `Node.js ${version} is not supported. Please upgrade to Node.js v18 or higher.`
       )
     }
   }, `Node.js ${process.version} detected — OK`)
@@ -157,18 +153,13 @@ async function createEnvFile() {
     const envPath = join(__dirname, '.env')
     const examplePath = join(__dirname, '.env.example')
 
-    if (existsSync(envPath)) {
-      // .env already exists — skip
-      return
-    }
+    if (existsSync(envPath)) return
 
     if (existsSync(examplePath)) {
       copyFileSync(examplePath, envPath)
     } else {
-      // create a default .env file
       writeFileSync(envPath,
 `# Cypheron Bot Environment Variables
-# Copy this file and fill in your values
 
 # Your WhatsApp Session ID
 # Get it from: https://cypheron-session.onrender.com
@@ -187,15 +178,18 @@ OMDB_API_KEY=
 
 // ✅ install dependencies
 async function installDependencies() {
-  console.log(`\n${c('cyan', '📦 Installing dependencies...')}\n`)
+  console.log(`\n${c('cyan', '📦 Installing dependencies...')}`)
 
-  await progressBar('Preparing installation...', 10, 20)
+  await progressBar('Preparing installation...')
 
   await new Promise((resolve, reject) => {
     const install = spawn(
-      process.platform === 'win32' ? 'npm.cmd' : 'npm',
+      'npm',
       ['install'],
-      { stdio: 'pipe' }
+      {
+        stdio: 'pipe',
+        shell: true // ✅ fixes EINVAL error on Windows
+      }
     )
 
     install.on('close', (code) => {
@@ -258,7 +252,6 @@ async function promptEnvSetup() {
 
   rl.close()
 
-  // write values to .env
   const envContent =
 `# Cypheron Bot Environment Variables
 
@@ -300,16 +293,21 @@ async function countdown() {
     )
     await sleep(1000)
   }
-  process.stdout.write(`\r  ${c('green', '🚀')} Starting Cypheron Bot...              \n\n`)
+  process.stdout.write(
+    `\r  ${c('green', '🚀')} Starting Cypheron Bot...              \n\n`
+  )
   await sleep(500)
 }
 
 // ✅ start the bot
 function startBot() {
   const bot = spawn(
-    process.platform === 'win32' ? 'node.exe' : 'node',
+    'node',
     ['index.js'],
-    { stdio: 'inherit' }
+    {
+      stdio: 'inherit',
+      shell: true // ✅ fixes EINVAL error on Windows
+    }
   )
 
   bot.on('close', (code) => {
@@ -323,7 +321,6 @@ function startBot() {
 async function main() {
   try {
 
-    // show banner
     await showBanner()
 
     console.log(`${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`)
@@ -343,34 +340,40 @@ async function main() {
     await installDependencies()
 
     // step 5 — prompt for configuration
-    // only if .env has empty SESSION_ID
     const envContent = existsSync(join(__dirname, '.env'))
       ? readFileSync(join(__dirname, '.env'), 'utf8')
       : ''
 
-    const hasSessionId = envContent.includes('SESSION_ID=') &&
-      !envContent.includes('SESSION_ID=\n') &&
-      !envContent.includes('SESSION_ID= ')
+    const hasSessionId =
+      envContent.includes('SESSION_ID=') &&
+      !envContent.match(/SESSION_ID=\s*\n/) &&
+      !envContent.match(/SESSION_ID= /)
 
     if (!hasSessionId) {
       await promptEnvSetup()
     } else {
-      console.log(`\n${c('green', '✓')} ${c('green', 'Configuration already set — OK')}`)
+      console.log(
+        `\n${c('green', '✓')} ${c('green', 'Configuration already set — OK')}`
+      )
     }
 
     // step 6 — show completion
     await showCompletion()
 
-    // step 7 — countdown and start
+    // step 7 — countdown
     await countdown()
 
     // step 8 — start the bot
     startBot()
 
   } catch (err) {
-    console.log(`\n${c('red', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`)
+    console.log(
+      `\n${c('red', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`
+    )
     console.log(`${c('red', bold('  ❌ SETUP FAILED'))}`)
-    console.log(`${c('red', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`)
+    console.log(
+      `${c('red', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`
+    )
     console.log(`  ${c('red', err.message)}\n`)
     console.log(`  ${c('yellow', 'Please fix the error above and run setup again.')}`)
     console.log(`  ${c('yellow', 'Run: node setup.js')}\n`)
