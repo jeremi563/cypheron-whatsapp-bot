@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import os from 'os'
 import config from '../../config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -12,6 +13,22 @@ export default {
   async execute(sock, chatJid, sender, msg, commands) {
 
     const now = new Date()
+    
+    // ✅ Dynamic Greeting
+    const hour = now.getHours()
+    let greeting = 'Good evening 🌙'
+    if (hour < 12) greeting = 'Good morning ☀️'
+    else if (hour < 18) greeting = 'Good afternoon 🌤️'
+
+    // ✅ Calculate Stats
+    const uptimeInSeconds = process.uptime()
+    const uptimeHours = Math.floor(uptimeInSeconds / 3600)
+    const uptimeMinutes = Math.floor((uptimeInSeconds % 3600) / 60)
+    const uptimeSeconds = Math.floor(uptimeInSeconds % 60)
+    const uptimeString = `${uptimeHours}h ${uptimeMinutes}m ${uptimeSeconds}s`
+
+    const ramUsage = (process.memoryUsage().rss / 1024 / 1024).toFixed(2)
+    const totalRam = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2) // in GB
     const time = now.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -132,8 +149,8 @@ export default {
     // ✅ build each category section
     const buildSection = (title, cmds) => {
       if (cmds.length === 0) return ''
-      const list = cmds.map(cmd => `│  ➤ ${cmd.name}`).join('\n')
-      return `╔══════════════════════════╗\n║ ${title.padEnd(25)}║\n╠══════════════════════════╣\n${list}\n╚══════════════════════════╝\n`
+      const list = cmds.map(cmd => ` ▹ ${cmd.name}`).join('\n')
+      return `「 ${title} 」\n${list}\n`
     }
 
     const generalSection = buildSection('🌍 GENERAL', categories['🌍 General'])
@@ -148,20 +165,17 @@ export default {
     const totalCommands = commands.size
 
     const menuText =
-`╔══════════════════════════╗
-║   🤖 CYPHERON BOT MENU   ║
-╚══════════════════════════╝
-
-👤 *User:* @${sender.replace('@s.whatsapp.net', '').replace('@lid', '')}
-📅 *Date:* ${date}
-🕐 *Time:* ${time}
-⚡ *Prefix:* ${config.prefix}
-📊 *Commands:* ${totalCommands}
-
-_Type ${config.prefix}<command> to use_
-_Example: ${config.prefix}ping_
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`╭━━ [ 🤖 *CYPHERON BOT* ] ━━
+┃
+┃ ${greeting}, @${sender.replace('@s.whatsapp.net', '').replace('@lid', '')}!
+┃ 📅 *Date:* ${date}
+┃ 🕐 *Time:* ${time}
+┃ ⚡ *Prefix:* [ ${config.prefix} ]
+┃ ⏳ *Uptime:* ${uptimeString}
+┃ 💾 *RAM:* ${ramUsage} MB / ${totalRam} GB
+┃ 📊 *Commands:* ${totalCommands}
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${generalSection}
 ${funSection}
@@ -171,23 +185,43 @@ ${mediaSection}
 ${groupSection}
 ${downloaderSection}
 ${ownerSection}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📢 *Channel:* wa.me/channel/0029VbCHhynLSmbdAmqOD438
 
-📢 *Channel:*
-https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
-
-🐙 *GitHub:*
-https://github.com/jeremi563/cypheron-whatsapp-bot
+*_Tap the image above to view our Source Code!_* 🐙
 
 _Powered by Cypheron Bot 🤖_`
 
     const image = readFileSync(join(__dirname, '../../assets/bot.jpg'))
 
+    // ✅ Send Main Menu Message (First)
     await sock.sendMessage(chatJid, {
-      image: image,
-      caption: menuText,
-      mentions: [sender]
+      text: menuText,
+      mentions: [sender],
+      contextInfo: {
+        forwardingScore: 999,
+        isForwarded: true,
+        externalAdReply: {
+          title: "🤖 Cypheron Bot",
+          body: `Uptime: ${uptimeString} | RAM: ${ramUsage}MB`,
+          thumbnail: image,
+          sourceUrl: "https://github.com/jeremi563/cypheron-whatsapp-bot",
+          mediaType: 1,
+          renderLargerThumbnail: true
+        }
+      }
     }, { quoted: msg })
+
+    // ✅ Send Welcome Audio (Voice Note) (Second)
+    try {
+      const audio = readFileSync(join(__dirname, '../../assets/welcome.mp3'))
+      await sock.sendMessage(chatJid, {
+        audio: audio,
+        mimetype: 'audio/mp4',
+        ptt: true
+      }) // Not quoting the original msg here so it nicely follows the menu instead of stacking quotes
+    } catch (e) {
+      console.log('Welcome audio not found, skipping...')
+    }
 
   }
 }
