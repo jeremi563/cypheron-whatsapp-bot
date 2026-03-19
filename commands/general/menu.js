@@ -16,14 +16,14 @@ export default {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
-      timeZone: 'Africa/Nairobi'
+      timeZone: config.timezone
     })
     const date = now.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      timeZone: 'Africa/Nairobi'
+      timeZone: config.timezone
     })
 
     // ✅ organize commands by category
@@ -53,6 +53,7 @@ export default {
       owner: '🌍 General',
       rules: '🌍 General',
       support: '🌍 General',
+      whoami: '🌍 General',
 
       // owner
       autobio: '👑 Owner',
@@ -60,17 +61,18 @@ export default {
       autostatus: '👑 Owner',
       autotyping: '👑 Owner',
       autorecording: '👑 Owner',
-      typing: '👑 Owner',
-      recording: '👑 Owner',
-      track: '👑 Owner',
-      restart: '👑 Owner',
-      shutdown: '👑 Owner',
-      eval: '👑 Owner',
-      setprefix: '👑 Owner',
+      autowelcome: '👑 Owner',
+      antiviewonce: '👑 Owner',
       block: '👑 Owner',
       unblock: '👑 Owner',
+      eval: '👑 Owner',
+      setprefix: '👑 Owner',
+      track: '👑 Owner',
+      typing: '👑 Owner',
+      recording: '👑 Owner',
+      restart: '👑 Owner',
+      shutdown: '👑 Owner',
       getid: '👑 Owner',
-      autowelcome: '👑 Owner',
 
       // fun
       fact: '🎮 Fun',
@@ -109,6 +111,7 @@ export default {
       goodbye: '👥 Group',
       antilink: '👥 Group',
       antispam: '👥 Group',
+      vv: '👥 Group',
 
       // downloader
       tiktok: '⬇️ Downloader',
@@ -149,7 +152,7 @@ export default {
 ║   🤖 CYPHERON BOT MENU   ║
 ╚══════════════════════════╝
 
-👤 *User:* @${sender.replace('@s.whatsapp.net', '')}
+👤 *User:* @${sender.replace('@s.whatsapp.net', '').replace('@lid', '')}
 📅 *Date:* ${date}
 🕐 *Time:* ${time}
 ⚡ *Prefix:* ${config.prefix}
@@ -170,11 +173,11 @@ ${downloaderSection}
 ${ownerSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔗 *GitHub:*
-https://github.com/jeremi563/my-bot
-
 📢 *Channel:*
 https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+🐙 *GitHub:*
+https://github.com/jeremi563/cypheron-whatsapp-bot
 
 _Powered by Cypheron Bot 🤖_`
 
@@ -183,10 +186,8 @@ _Powered by Cypheron Bot 🤖_`
     await sock.sendMessage(chatJid, {
       image: image,
       caption: menuText,
-      mentions: [sender],
-      detectLinks: true,
-      quoted: msg
-    })
+      mentions: [sender]
+    }, { quoted: msg })
 
   }
 }

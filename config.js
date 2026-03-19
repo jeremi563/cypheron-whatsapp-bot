@@ -10,7 +10,7 @@ const config = {
   // ✅ bot features
   autoBio: true,
   autoViewStatus: true,
-  autoLikeStatus: false,
+  autoLikeStatus: true,
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',
@@ -23,7 +23,7 @@ const config = {
 
   // ✅ anti features
   antiViewOncePrivate: true,
-  antiViewOnceGroup: false,
+  antiViewOnceGroup: true,
 
   // ✅ group settings
   antilink: false,
