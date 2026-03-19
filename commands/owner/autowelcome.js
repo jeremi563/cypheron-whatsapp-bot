@@ -5,14 +5,9 @@ export default {
   name: 'autowelcome',
   ownerOnly: true,
   description: 'Toggle auto welcome message for new chats',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const args = text.trim().split(' ')
-    const option = args[1]?.toLowerCase()
+    const option = args[0]?.toLowerCase()
 
     if (!option) {
       await sock.sendMessage(chatJid, {
@@ -22,98 +17,121 @@ export default {
 ╚════════════════════════╝
 
 *Usage:*
-- ${config.prefix}autowelcome on — enable welcome
-- ${config.prefix}autowelcome off — disable welcome
-- ${config.prefix}autowelcome reset <number> — reset cooldown for a number
+- ${config.prefix}autowelcome on
+- ${config.prefix}autowelcome off
+- ${config.prefix}autowelcome hours <start> <end>
+- ${config.prefix}autowelcome cooldown <minutes>
+- ${config.prefix}autowelcome reset <number>
 
-*Status:* ${getWelcomeEnabled() ? '🟢 ON' : '🔴 OFF'}
+*Current Settings:*
+🟢 *Status:* ${getWelcomeEnabled() ? 'ON' : 'OFF'}
+🕐 *Hours:* ${config.welcomeStartHour}:00 — ${config.welcomeEndHour}:00
+⏱️ *Cooldown:* ${config.welcomeCooldown} minutes
 
-*How it works:*
-- First time someone messages → welcome sent ✅
-- Same person messages again within 30 mins → no welcome ✅
-- Hidden last seen users → welcome sent once only ✅
-- After 30 mins of silence → welcome sent again ✅`,
-        quoted: msg
-      })
+_Hours use 24hr format. Example: 22 = 10PM, 8 = 8AM_`
+      }, { quoted: msg })
       return
     }
 
     if (option === 'on') {
       if (getWelcomeEnabled()) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto welcome is already *ON!*`,
-          quoted: msg
-        })
+          text: `⚠️ Auto welcome is already *ON!*`
+        }, { quoted: msg })
         return
       }
-
       setWelcomeEnabled(true)
-
       await sock.sendMessage(chatJid, {
         text:
-`╔════════════════════════╗
-║    👋 AUTO WELCOME      ║
-╚════════════════════════╝
+`✅ *Auto welcome is now ON!*
 
-✅ *Auto welcome is now ON!*
-
-New contacts will receive a welcome message when they first message you or after 30 minutes of silence.
-
-Type *${config.prefix}autowelcome off* to disable.`,
-        quoted: msg
-      })
+🕐 Active from *${config.welcomeStartHour}:00* to *${config.welcomeEndHour}:00*
+⏱️ Cooldown: *${config.welcomeCooldown} minutes*`
+      }, { quoted: msg })
 
     } else if (option === 'off') {
       if (!getWelcomeEnabled()) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto welcome is already *OFF!*`,
-          quoted: msg
-        })
+          text: `⚠️ Auto welcome is already *OFF!*`
+        }, { quoted: msg })
+        return
+      }
+      setWelcomeEnabled(false)
+      await sock.sendMessage(chatJid, {
+        text: `🔴 *Auto welcome is now OFF!*`
+      }, { quoted: msg })
+
+    } else if (option === 'hours') {
+      const start = parseInt(args[1])
+      const end = parseInt(args[2])
+
+      if (isNaN(start) || isNaN(end) || start < 0 || start > 23 || end < 0 || end > 23) {
+        await sock.sendMessage(chatJid, {
+          text:
+`❌ Invalid hours. Use 24hr format 0-23.
+
+*Usage:* ${config.prefix}autowelcome hours <start> <end>
+*Example:* ${config.prefix}autowelcome hours 22 6
+
+This sets welcome active from 10PM to 6AM`
+        }, { quoted: msg })
         return
       }
 
-      setWelcomeEnabled(false)
+      config.welcomeStartHour = start
+      config.welcomeEndHour = end
 
       await sock.sendMessage(chatJid, {
         text:
-`╔════════════════════════╗
-║    👋 AUTO WELCOME      ║
-╚════════════════════════╝
+`✅ *Welcome hours updated!*
 
-🔴 *Auto welcome is now OFF!*
+🕐 Now active from *${start}:00* to *${end}:00*
 
-No welcome messages will be sent.
+⚠️ Update config.js to make permanent.`
+      }, { quoted: msg })
 
-Type *${config.prefix}autowelcome on* to enable.`,
-        quoted: msg
-      })
+    } else if (option === 'cooldown') {
+      const minutes = parseInt(args[1])
+
+      if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
+        await sock.sendMessage(chatJid, {
+          text:
+`❌ Invalid cooldown. Must be 1 to 1440 minutes.
+
+*Usage:* ${config.prefix}autowelcome cooldown <minutes>
+*Example:* ${config.prefix}autowelcome cooldown 30`
+        }, { quoted: msg })
+        return
+      }
+
+      config.welcomeCooldown = minutes
+
+      await sock.sendMessage(chatJid, {
+        text: `✅ *Cooldown updated to ${minutes} minutes!*`
+      }, { quoted: msg })
 
     } else if (option === 'reset') {
-      const number = args[2]
+      const number = args[1]
 
       if (!number) {
         await sock.sendMessage(chatJid, {
-          text: `❌ Please provide a number.\n\n*Usage:* ${config.prefix}autowelcome reset 254712345678`,
-          quoted: msg
-        })
+          text: `❌ Please provide a number.\n\n*Usage:* ${config.prefix}autowelcome reset 254712345678`
+        }, { quoted: msg })
         return
       }
 
       const cleanNumber = number.replace(/[^0-9]/g, '')
       const jid = `${cleanNumber}@s.whatsapp.net`
-
       resetCooldown(jid)
 
       await sock.sendMessage(chatJid, {
-        text: `✅ Cooldown reset for *+${cleanNumber}*\nThey will receive a welcome message on their next message.`,
-        quoted: msg
-      })
+        text: `✅ Cooldown reset for *+${cleanNumber}*`
+      }, { quoted: msg })
 
     } else {
       await sock.sendMessage(chatJid, {
-        text: `❌ Unknown option. Type *${config.prefix}autowelcome* to see all options.`,
-        quoted: msg
-      })
+        text: `❌ Unknown option. Type *${config.prefix}autowelcome* to see all options.`
+      }, { quoted: msg })
     }
   }
 }

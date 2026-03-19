@@ -11,16 +11,6 @@ const truths = [
   "Have you ever blamed someone else for something you did? 😅",
   "What is the longest you have gone without showering? 🚿",
   "Have you ever stalked someone on social media? 📱",
-  "What is the most embarrassing song on your playlist? 🎵",
-  "Have you ever pretended to be sick to avoid something? 🤒",
-  "What is a secret you have never told anyone? 🤫",
-  "Have you ever broken something and blamed it on someone else? 💔",
-  "What is the most ridiculous thing you have ever believed as a child? 👶",
-  "Have you ever sent a message to the wrong person? 📨",
-  "What is your most embarrassing nickname? 😂",
-  "Have you ever eaten food that fell on the floor? 🍕",
-  "What is the strangest dream you have ever had? 💭",
-  "Have you ever laughed at the wrong moment? 😂",
 ]
 
 export default {
@@ -29,7 +19,7 @@ export default {
   description: 'Get a random truth question',
   async execute(sock, chatJid, sender, msg) {
     const randomTruth = truths[Math.floor(Math.random() * truths.length)]
-    const senderNumber = sender.replace('@s.whatsapp.net', '')
+    const senderNumber = sender.replace('@s.whatsapp.net', '').replace('@lid', '')
 
     await sock.sendMessage(chatJid, {
       text:
@@ -37,13 +27,12 @@ export default {
 ║     🎯 TRUTH TIME!      ║
 ╚════════════════════════╝
 
-@${senderNumber} you must answer this honestly:
+@${senderNumber} you must answer honestly:
 
 ❓ ${randomTruth}
 
 _No lies allowed! 😤_`,
-      mentions: [sender],
-      quoted: msg
-    })
+      mentions: [sender]
+    }, { quoted: msg })
   }
 }

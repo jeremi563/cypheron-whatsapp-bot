@@ -21,39 +21,26 @@ export default {
   ownerOnly: false,
   description: 'Calculate love percentage between two people',
   async execute(sock, chatJid, sender, msg) {
-
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
     const mentions = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || []
 
-    // need exactly two mentions
     if (mentions.length < 2) {
       await sock.sendMessage(chatJid, {
-        text:
-`❌ Please mention two people to ship!
-
-*Usage:* ${config.prefix}ship @person1 @person2
-*Example:* ${config.prefix}ship @john @jane`,
-        quoted: msg
-      })
+        text: `❌ Please mention two people.\n\n*Usage:* ${config.prefix}ship @person1 @person2`
+      }, { quoted: msg })
       return
     }
 
     const person1 = mentions[0]
     const person2 = mentions[1]
-    const number1 = person1.replace('@s.whatsapp.net', '')
-    const number2 = person2.replace('@s.whatsapp.net', '')
+    const number1 = person1.replace('@s.whatsapp.net', '').replace('@lid', '')
+    const number2 = person2.replace('@s.whatsapp.net', '').replace('@lid', '')
 
-    // generate a consistent percentage based on both numbers
     const combined = number1 + number2
     let hash = 0
     for (let i = 0; i < combined.length; i++) {
       hash = combined.charCodeAt(i) + ((hash << 5) - hash)
     }
     const percentage = Math.abs(hash % 101)
-
     const emoji = getShipEmoji(percentage)
     const bar = getShipBar(percentage)
 
@@ -73,8 +60,7 @@ ${bar}
 ${emoji}
 
 _Love calculator powered by Cypheron 💕_`,
-      mentions: [person1, person2],
-      quoted: msg
-    })
+      mentions: [person1, person2]
+    }, { quoted: msg })
   }
 }

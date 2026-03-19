@@ -48,8 +48,7 @@ export default {
 ├ Used: ${usedMem}
 └ Free: ${freeMem}
 
-_Cypheron running smoothly! 🚀_`,
-      quoted: msg
-    })
+_Cypheron running smoothly! 🚀_`
+    }, { quoted: msg })
   }
 }

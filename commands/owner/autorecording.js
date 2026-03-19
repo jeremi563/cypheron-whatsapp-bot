@@ -1,6 +1,7 @@
 import config from '../../config.js'
 
-let autorecordingEnabled = false
+// ✅ read initial state from config
+let autorecordingEnabled = config.autoRecording
 
 export function isAutorecordingEnabled() {
   return autorecordingEnabled
@@ -10,7 +11,6 @@ export async function sendRecording(sock, chatJid) {
   if (!autorecordingEnabled) return
   try {
     await sock.sendPresenceUpdate('recording', chatJid)
-    // stop recording after 3 seconds
     setTimeout(async () => {
       try {
         await sock.sendPresenceUpdate('paused', chatJid)
@@ -25,14 +25,9 @@ export default {
   name: 'autorecording',
   ownerOnly: true,
   description: 'Toggle auto recording indicator when someone messages',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const args = text.trim().split(' ')
-    const option = args[1]?.toLowerCase()
+    const option = args[0]?.toLowerCase()
 
     if (!option || (option !== 'on' && option !== 'off')) {
       await sock.sendMessage(chatJid, {
@@ -42,64 +37,42 @@ export default {
 ╚════════════════════════╝
 
 *Usage:*
-- ${config.prefix}autorecording on — enable auto recording
-- ${config.prefix}autorecording off — disable auto recording
+- ${config.prefix}autorecording on
+- ${config.prefix}autorecording off
 
 *Status:* ${autorecordingEnabled ? '🟢 ON' : '🔴 OFF'}
 
-_When enabled the bot will appear to be recording audio whenever someone sends a message_`,
-        quoted: msg
-      })
+_When enabled the bot appears to be recording when someone sends a message_`
+      }, { quoted: msg })
       return
     }
 
     if (option === 'on') {
       if (autorecordingEnabled) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto recording is already *ON!*\nType *${config.prefix}autorecording off* to disable.`,
-          quoted: msg
-        })
+          text: `⚠️ Auto recording is already *ON!*`
+        }, { quoted: msg })
         return
       }
-
       autorecordingEnabled = true
-
       await sock.sendMessage(chatJid, {
         text:
-`╔════════════════════════╗
-║    🎙️  AUTO RECORDING   ║
-╚════════════════════════╝
+`✅ *Auto recording is now ON!*
 
-✅ *Auto recording is now ON!*
-
-The bot will appear to be recording audio whenever someone sends a message in both private and group chats.
-
-Type *${config.prefix}autorecording off* to disable.`,
-        quoted: msg
-      })
+Type *${config.prefix}autorecording off* to disable.`
+      }, { quoted: msg })
 
     } else if (option === 'off') {
       if (!autorecordingEnabled) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto recording is already *OFF!*\nType *${config.prefix}autorecording on* to enable.`,
-          quoted: msg
-        })
+          text: `⚠️ Auto recording is already *OFF!*`
+        }, { quoted: msg })
         return
       }
-
       autorecordingEnabled = false
-
       await sock.sendMessage(chatJid, {
-        text:
-`╔════════════════════════╗
-║    🎙️  AUTO RECORDING   ║
-╚════════════════════════╝
-
-🔴 *Auto recording is now OFF!*
-
-Type *${config.prefix}autorecording on* to enable.`,
-        quoted: msg
-      })
+        text: `🔴 *Auto recording is now OFF!*`
+      }, { quoted: msg })
     }
   }
 }

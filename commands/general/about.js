@@ -1,12 +1,21 @@
 import config from '../../config.js'
+import { readFileSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export default {
   name: 'about',
   ownerOnly: false,
   description: 'About this bot',
   async execute(sock, chatJid, sender, msg) {
+
+    const image = readFileSync(join(__dirname, '../../assets/bot.jpg'))
+
     await sock.sendMessage(chatJid, {
-      text:
+      image: image,
+      caption:
 `╔════════════════════════╗
 ║       🤖 CYPHERON       ║
 ╚════════════════════════╝
@@ -27,13 +36,8 @@ Cypheron is a powerful WhatsApp automation bot built with Node.js and Gifted Bai
 *Developer:* Jeremia Obed
 *Built with:* ❤️ and Node.js
 
-🔗 *GitHub Repo:*
-https://github.com/jeremi563/my-bot
+📢 https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438`
+    }, { quoted: msg })
 
-📢 *Join our channel:*
-https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438`,
-detectLinks: true,
-      quoted: msg
-    })
   }
 }

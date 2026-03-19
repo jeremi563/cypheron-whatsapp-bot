@@ -1,25 +1,49 @@
+import config from './config.js'
+
 const cooldowns = new Map()
 const firstTimeSenders = new Set()
 
-// 30 minutes in milliseconds
-const COOLDOWN_TIME = 30 * 60 * 1000
-
-// ✅ track if welcome is enabled globally
-let welcomeEnabled = false
-
 export function setWelcomeEnabled(value) {
-  welcomeEnabled = value
+  config.welcomeEnabled = value
 }
 
 export function getWelcomeEnabled() {
-  return welcomeEnabled
+  return config.welcomeEnabled
+}
+
+// ✅ check if current time is within the welcome window
+function isWithinWelcomeHours() {
+  const now = new Date()
+
+  const hour = parseInt(
+    new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: config.timezone
+    }).format(now)
+  )
+
+  const start = config.welcomeStartHour
+  const end = config.welcomeEndHour
+
+  // ✅ overnight window e.g. 22:00 to 06:00
+  if (start > end) {
+    return hour >= start || hour < end
+  }
+
+  // ✅ same day window e.g. 09:00 to 17:00
+  return hour >= start && hour < end
 }
 
 export function shouldWelcome(sender) {
-  // if welcome is disabled return false immediately
-  if (!welcomeEnabled) return false
+  // ✅ if welcome is globally disabled return false
+  if (!config.welcomeEnabled) return false
+
+  // ✅ check if within allowed hours
+  if (!isWithinWelcomeHours()) return false
 
   const now = Date.now()
+  const cooldownMs = config.welcomeCooldown * 60 * 1000
   const lastSeen = cooldowns.get(sender)
 
   // ✅ first time ever messaging
@@ -29,23 +53,19 @@ export function shouldWelcome(sender) {
     return true
   }
 
-  // ✅ check if sender has hidden last seen
-  // we detect this by checking if their timestamp
-  // never gets updated beyond the first time
+  // ✅ hidden last seen — only send once per cooldown period
   const isFirstTimer = firstTimeSenders.has(sender)
 
   if (isFirstTimer) {
-    // ✅ already sent once to this person
-    // only send again if 30 minutes have passed
-    if ((now - lastSeen) >= COOLDOWN_TIME) {
+    if ((now - lastSeen) >= cooldownMs) {
       cooldowns.set(sender, now)
       return true
     }
     return false
   }
 
-  // normal cooldown check for everyone else
-  if ((now - lastSeen) >= COOLDOWN_TIME) {
+  // ✅ normal cooldown check
+  if ((now - lastSeen) >= cooldownMs) {
     cooldowns.set(sender, now)
     return true
   }
@@ -53,7 +73,6 @@ export function shouldWelcome(sender) {
   return false
 }
 
-// ✅ mark a sender as having visible last seen
 export function markSenderActive(sender) {
   firstTimeSenders.delete(sender)
   cooldowns.set(sender, Date.now())

@@ -20,6 +20,7 @@ import { checkAntiSpam } from './commands/group/antispam.js'
 import { sendTyping } from './commands/owner/autotyping.js'
 import { sendRecording } from './commands/owner/autorecording.js'
 import { startKeepAlive } from './server-keep-alive.js'
+import { isAntiViewOncePrivateEnabled } from './commands/owner/antiviewonce.js'
 import config from './config.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -29,7 +30,8 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
-  Browsers
+  Browsers,
+  downloadMediaMessage
 } = pkg
 
 const log = {
@@ -292,6 +294,59 @@ Type *${config.prefix}menu* to see all available commands.`
           await sendRecording(sock, chatJid)
         }
 
+        // ✅ anti view once — private auto reveal
+        if (!isGroup && !msg.key.fromMe && isAntiViewOncePrivateEnabled()) {
+          const viewOnceMsg =
+            msg.message?.viewOnceMessage?.message ||
+            msg.message?.viewOnceMessageV2?.message ||
+            msg.message?.viewOnceMessageV2Extension?.message
+
+          if (viewOnceMsg) {
+            try {
+              const mediaMsg =
+                viewOnceMsg.imageMessage ||
+                viewOnceMsg.videoMessage ||
+                viewOnceMsg.audioMessage
+
+              if (mediaMsg) {
+                mediaMsg.viewOnce = false
+
+                const buffer = await downloadMediaMessage(
+                  msg,
+                  'buffer',
+                  {},
+                  {
+                    logger: pino({ level: 'silent' }),
+                    reuploadRequest: sock.updateMediaMessage
+                  }
+                )
+
+                if (viewOnceMsg.imageMessage) {
+                  await sock.sendMessage(chatJid, {
+                    image: buffer,
+                    caption: `👁️ *View Once saved!*`
+                  })
+                } else if (viewOnceMsg.videoMessage) {
+                  await sock.sendMessage(chatJid, {
+                    video: buffer,
+                    caption: `👁️ *View Once saved!*`
+                  })
+                } else if (viewOnceMsg.audioMessage) {
+                  await sock.sendMessage(chatJid, {
+                    audio: buffer,
+                    mimetype: 'audio/mp4',
+                    ptt: viewOnceMsg.audioMessage.ptt || false
+                  })
+                }
+
+                log.success(`👁️ Anti view once revealed from ${chalk.yellow(sender)}`)
+              }
+            } catch (err) {
+              log.error(`Anti view once error: ${err.message}`)
+            }
+          }
+        }
+
         // ✅ antilink and antispam checks
         if (isGroup && !msg.key.fromMe) {
           await checkAntiLink(sock, msg, chatJid, sender)
@@ -345,6 +400,20 @@ _This is an automated message._`,
           }
         }
 
+        // ✅ handle .vv command with dot prefix in groups
+        if (isGroup && body.toLowerCase() === '.vv') {
+          const vvCommand = commands.get('vv')
+          if (vvCommand) {
+            try {
+              await vvCommand.execute(sock, chatJid, sender, msg, commands, [])
+              log.success(`Executed: vv for ${chalk.yellow(sender)}`)
+            } catch (err) {
+              log.error(`vv command error: ${err.message}`)
+            }
+          }
+          continue
+        }
+
         // ✅ ignore messages that dont start with prefix
         if (!body.startsWith(config.prefix)) continue
 
@@ -391,8 +460,8 @@ _This is an automated message._`,
       }
 
     } catch (err) {
-      if (err.message?.includes('Bad MAC') || err.message?.includes('decrypt')) return
-      log.error(`Unexpected error: ${err.message}`)
+      if (err?.message?.includes('Bad MAC') || err?.message?.includes('decrypt')) return
+      log.error(`Unexpected error: ${err?.message || err}`)
     }
   })
 
@@ -435,13 +504,13 @@ _This is an automated message._`,
 }
 
 process.on('uncaughtException', (err) => {
-  if (err.message?.includes('Bad MAC') || err.message?.includes('decrypt')) return
-  log.error(`Uncaught error: ${err.message}`)
+  if (err?.message?.includes('Bad MAC') || err?.message?.includes('decrypt')) return
+  log.error(`Uncaught error: ${err?.message || err}`)
 })
 
 process.on('unhandledRejection', (err) => {
   if (err?.message?.includes('Bad MAC') || err?.message?.includes('decrypt')) return
-  log.error(`Unhandled rejection: ${err?.message}`)
+  log.error(`Unhandled rejection: ${err?.message || err}`)
 })
 
 // ✅ start keep-alive server ONCE outside startBot

@@ -16,13 +16,12 @@ export default {
 👤 *Bot Owner*
 
 📱 *Contact:* @${ownerNumber}
+
 📢 *Channel:*
 https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
 
 _Contact the owner for support or inquiries_`,
-detectLinks: true,
-      mentions: [config.owner],
-      quoted: msg
-    })
+      mentions: [config.owner]
+    }, { quoted: msg })
   }
 }

@@ -1,7 +1,7 @@
 import config from '../../config.js'
 
-// track which chats have autotyping enabled
-let autotypingEnabled = false
+// ✅ read initial state from config
+let autotypingEnabled = config.autoTyping
 
 export function isAutotypingEnabled() {
   return autotypingEnabled
@@ -11,7 +11,6 @@ export async function sendTyping(sock, chatJid) {
   if (!autotypingEnabled) return
   try {
     await sock.sendPresenceUpdate('composing', chatJid)
-    // stop typing after 3 seconds
     setTimeout(async () => {
       try {
         await sock.sendPresenceUpdate('paused', chatJid)
@@ -26,14 +25,9 @@ export default {
   name: 'autotyping',
   ownerOnly: true,
   description: 'Toggle auto typing indicator when someone messages',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const args = text.trim().split(' ')
-    const option = args[1]?.toLowerCase()
+    const option = args[0]?.toLowerCase()
 
     if (!option || (option !== 'on' && option !== 'off')) {
       await sock.sendMessage(chatJid, {
@@ -43,64 +37,44 @@ export default {
 ╚════════════════════════╝
 
 *Usage:*
-- ${config.prefix}autotyping on — enable auto typing
-- ${config.prefix}autotyping off — disable auto typing
+- ${config.prefix}autotyping on
+- ${config.prefix}autotyping off
 
 *Status:* ${autotypingEnabled ? '🟢 ON' : '🔴 OFF'}
 
-_When enabled the bot will appear to be typing whenever someone sends a message_`,
-        quoted: msg
-      })
+_When enabled the bot appears to be typing when someone sends a message_`
+      }, { quoted: msg })
       return
     }
 
     if (option === 'on') {
       if (autotypingEnabled) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto typing is already *ON!*\nType *${config.prefix}autotyping off* to disable.`,
-          quoted: msg
-        })
+          text: `⚠️ Auto typing is already *ON!*`
+        }, { quoted: msg })
         return
       }
-
       autotypingEnabled = true
-
       await sock.sendMessage(chatJid, {
         text:
-`╔════════════════════════╗
-║     ⌨️  AUTO TYPING     ║
-╚════════════════════════╝
+`✅ *Auto typing is now ON!*
 
-✅ *Auto typing is now ON!*
+The bot will appear to be typing whenever someone sends a message.
 
-The bot will appear to be typing whenever someone sends a message in both private and group chats.
-
-Type *${config.prefix}autotyping off* to disable.`,
-        quoted: msg
-      })
+Type *${config.prefix}autotyping off* to disable.`
+      }, { quoted: msg })
 
     } else if (option === 'off') {
       if (!autotypingEnabled) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto typing is already *OFF!*\nType *${config.prefix}autotyping on* to enable.`,
-          quoted: msg
-        })
+          text: `⚠️ Auto typing is already *OFF!*`
+        }, { quoted: msg })
         return
       }
-
       autotypingEnabled = false
-
       await sock.sendMessage(chatJid, {
-        text:
-`╔════════════════════════╗
-║     ⌨️  AUTO TYPING     ║
-╚════════════════════════╝
-
-🔴 *Auto typing is now OFF!*
-
-Type *${config.prefix}autotyping on* to enable.`,
-        quoted: msg
-      })
+        text: `🔴 *Auto typing is now OFF!*`
+      }, { quoted: msg })
     }
   }
 }

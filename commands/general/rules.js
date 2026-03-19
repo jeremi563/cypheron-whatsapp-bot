@@ -13,8 +13,6 @@ export default {
 
 📋 *Bot Rules*
 
-Please follow these rules when using Cypheron:
-
 1️⃣ Do not spam commands
 2️⃣ Do not use the bot for illegal activities
 3️⃣ Do not abuse or harass other users
@@ -23,10 +21,9 @@ Please follow these rules when using Cypheron:
 6️⃣ Do not share your Session ID with anyone
 7️⃣ Use commands responsibly
 
-⚠️ *Violation of these rules may result in being blocked from using the bot.*
+⚠️ *Violation of these rules may result in being blocked.*
 
-_Thank you for using Cypheron! 🤖_`,
-      quoted: msg
-    })
+_Thank you for using Cypheron! 🤖_`
+    }, { quoted: msg })
   }
 }

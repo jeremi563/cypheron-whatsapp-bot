@@ -1,6 +1,5 @@
 import config from '../../config.js'
 
-// store the time the bot started
 const startTime = Date.now()
 
 function formatRuntime(ms) {
@@ -33,10 +32,7 @@ export default {
 
 🟢 *Status:* Online
 ⏰ *Running for:* ${runtime}
-📅 *Started at:* ${new Date(startTime).toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}
-
-_Cypheron is always online for you!_`,
-      quoted: msg
-    })
+📅 *Started at:* ${new Date(startTime).toLocaleString('en-US', { timeZone: config.timezone })}`
+    }, { quoted: msg })
   }
 }

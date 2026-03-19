@@ -16,11 +16,6 @@ const facts = [
   "The shortest war in history lasted 38 to 45 minutes. ⚔️",
   "A cloud can weigh over a million pounds. ☁️",
   "Crows can recognize and remember human faces. 🐦",
-  "The average person walks about 100,000 miles in their lifetime. 👣",
-  "There are more possible games of chess than atoms in the observable universe. ♟️",
-  "Wombat poop is cube-shaped. 🟫",
-  "The dot over the letter i is called a tittle. 📝",
-  "A group of cats is called a clowder. 🐱",
 ]
 
 export default {
@@ -38,8 +33,7 @@ export default {
 
 💡 ${randomFact}
 
-_Type ${config.prefix}fact for another fact!_`,
-      quoted: msg
-    })
+_Type ${config.prefix}fact for another fact!_`
+    }, { quoted: msg })
   }
 }

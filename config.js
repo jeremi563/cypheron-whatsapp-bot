@@ -4,33 +4,48 @@ const config = {
   prefix: '!',
   botName: 'CYPHERON',
   owner: '254731242169@s.whatsapp.net',
+  ownerLid: process.env.OWNER_LID || '186784386445322@lid',
+  timezone: 'Africa/Nairobi',
 
-   timezone: 'Africa/Nairobi',
+  // ✅ bot features
   autoBio: true,
-
-  // ✅ session ID loaded from .env
-  sessionId: process.env.SESSION_ID || '',
-
-  // auto status settings
   autoViewStatus: true,
-  autoLikeStatus: true,
+  autoLikeStatus: false,
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',
-
-  // auto react settings
   autoReact: true,
   reactEmojis: ['❤️', '🔥', '👁️', '🤖', '👏', '🦴', '💯', '✨', '📌', '⚡'],
 
-  // group settings
+  // ✅ auto typing and recording
+  autoTyping: false,
+  autoRecording: false,
+
+  // ✅ anti features
+  antiViewOncePrivate: true,
+  antiViewOnceGroup: false,
+
+  // ✅ group settings
   antilink: false,
   antispam: false,
   welcome: false,
   goodbye: true,
 
-  // search API keys
-gnewsApiKey: process.env.GNEWS_API_KEY || '',
-omdbApiKey: process.env.OMDB_API_KEY || '',
+  // ✅ auto welcome time settings
+  welcomeEnabled: true,
+  welcomeStartHour: 22,
+  welcomeEndHour: 6,
+  welcomeCooldown: 30,
+
+  // ✅ session ID loaded from .env
+  sessionId: process.env.SESSION_ID || '',
+
+  // ✅ search API keys
+  gnewsApiKey: process.env.GNEWS_API_KEY || '',
+  omdbApiKey: process.env.OMDB_API_KEY || '',
+
+  // ✅ debug
+  debugPresence: false,
 }
 
 export default config

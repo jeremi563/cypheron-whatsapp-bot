@@ -20,15 +20,7 @@ export default {
 💻 *Runtime:* Node.js
 🔧 *Version:* 1.0.0
 
-🔗 *GitHub Repo:*
-https://github.com/jeremi563/my-bot
-
-📢 *Channel:*
-https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
-
-_Type ${config.prefix}menu to see all commands_`,
-detectLinks: true,
-      quoted: msg
-    })
+_Type ${config.prefix}menu to see all commands_`
+    }, { quoted: msg })
   }
 }

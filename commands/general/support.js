@@ -15,15 +15,12 @@ export default {
 
 🆘 *Support*
 
-Need help with Cypheron? Here is how to get support:
+Need help with Cypheron?
 
 📱 *Contact Owner:*
 @${ownerNumber}
 
-🔗 *GitHub Repo:*
-https://github.com/jeremi563/my-bot
-
-📢 *WhatsApp Channel:*
+📢 *Channel:*
 https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
 
 📋 *Common Issues:*
@@ -32,9 +29,7 @@ https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
 - Session expired → Get new session ID
 
 _We are happy to help! 🤖_`,
-      detectLinks: true,
-      mentions: [config.owner],
-      quoted: msg
-    })
+      mentions: [config.owner]
+    }, { quoted: msg })
   }
 }
