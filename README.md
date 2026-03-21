@@ -49,6 +49,7 @@ npm run setup
 - ⌨️ Auto typing and recording indicators
 - 👋 Auto welcome with smart cooldown
 - 🔗 Anti link and anti spam protection
+- 🛡️ Anti delete and anti view once
 - 📡 Contact presence tracker
 - 🎵 Media conversion and downloading
 - 🔍 Search — weather, news, movies, lyrics
@@ -80,6 +81,24 @@ npm run setup
 > 🔴 Never push your **.env** file to GitHub.
 
 > 🟡 Use a **secondary WhatsApp number** to keep your main number safe.
+
+---
+
+## 👨‍💻 Developer
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Developer-Jeremia_Obed-000000?style=for-the-badge&color=00FF00"/>
+</p>
+
+<p align="center">
+  <a href="https://mywebsite-phi-umber.vercel.app/" target="_blank">
+    <img src="https://img.shields.io/badge/🌐_PORTFOLIO-000000?style=for-the-badge&color=00FF00" width="200" height="48"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/jeremi563" target="_blank">
+    <img src="https://img.shields.io/badge/🐙_GITHUB-000000?style=for-the-badge&color=gray" width="200" height="48"/>
+  </a>
+</p>
 
 ---
 
