@@ -14,12 +14,12 @@ const config = {
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',
-  autoReact: true,
+  autoReact: false,
   reactEmojis: ['❤️', '🔥', '👁️', '🤖', '👏', '🦴', '💯', '✨', '📌', '⚡'],
 
   // ✅ auto typing and recording
-  autoTyping: false,
-  autoRecording: false,
+  autoTyping: true,
+  autoRecording: true,
 
   // ✅ anti features
   antiViewOncePrivate: true,
