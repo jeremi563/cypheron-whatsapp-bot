@@ -1,18 +1,12 @@
-import pkg from 'gifted-dls'
-const { facebook } = pkg
 import config from '../../config.js'
 
 export default {
   name: 'facebook',
   ownerOnly: false,
   description: 'Download Facebook videos',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const url = text.slice(config.prefix.length + 'facebook'.length).trim()
+    const url = args[0]
 
     if (!url || !url.startsWith('http')) {
       await sock.sendMessage(chatJid, {
@@ -20,47 +14,59 @@ export default {
 `❌ Please provide a Facebook video URL.
 
 *Usage:* ${config.prefix}facebook <url>
-*Example:* ${config.prefix}facebook https://www.facebook.com/watch?v=xxxxx`,
-        quoted: msg
-      })
+*Example:* ${config.prefix}facebook https://www.facebook.com/watch?v=xxxxx`
+      }, { quoted: msg })
       return
     }
 
     try {
       await sock.sendMessage(chatJid, {
-        text: '⏳ Downloading Facebook video...',
-        quoted: msg
+        text: '⏳ Downloading Facebook video...'
+      }, { quoted: msg })
+
+      const response = await fetch(`https://getfvid.com/downloader`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        body: `url=${encodeURIComponent(url)}`
       })
 
-      const result = await facebook(url)
+      const html = await response.text()
 
-      if (!result || !result.data) {
+      const hdMatch = html.match(/href="(https:\/\/[^"]+\.mp4[^"]*)"[^>]*>.*?HD/s)
+      const sdMatch = html.match(/href="(https:\/\/[^"]+\.mp4[^"]*)"[^>]*>.*?SD/s)
+      const anyMatch = html.match(/href="(https:\/\/[^"]+\.mp4[^"]*)"/)
+
+      const videoUrl = hdMatch?.[1] || sdMatch?.[1] || anyMatch?.[1]
+      const quality = hdMatch ? 'HD' : 'SD'
+
+      if (!videoUrl) {
         await sock.sendMessage(chatJid, {
-          text: '❌ Failed to download. Please check the URL and try again.',
-          quoted: msg
-        })
+          text: '❌ Could not extract video. The video may be private.'
+        }, { quoted: msg })
         return
       }
 
-      const data = result.data
-
       await sock.sendMessage(chatJid, {
-        video: { url: data.hd || data.sd || data.url },
+        video: { url: videoUrl },
         caption:
 `✅ *Facebook Video Downloaded!*
 
-🎬 *Title:* ${data.title || 'No title'}
-📹 *Quality:* ${data.hd ? 'HD' : 'SD'}
+📹 *Quality:* ${quality}
 
-_Downloaded by Cypheron Bot 🤖_`,
-        quoted: msg
-      })
+━━━━━━━━━━━━━━━━━━━━━━━━
+📢 *Follow our channel:*
+https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+_Downloaded by Cypheron Bot 🤖_`
+      }, { quoted: msg })
 
     } catch (err) {
       await sock.sendMessage(chatJid, {
-        text: `❌ Failed to download: ${err.message}`,
-        quoted: msg
-      })
+        text: `❌ Failed to download: ${err.message}`
+      }, { quoted: msg })
     }
   }
 }

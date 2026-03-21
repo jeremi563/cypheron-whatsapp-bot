@@ -19,6 +19,7 @@ const bioQuotes = [
 
 let bioInterval = null
 let isRunning = false
+let currentSock = null // ✅ track current sock instance
 
 function getRandomQuote() {
   return bioQuotes[Math.floor(Math.random() * bioQuotes.length)]
@@ -29,56 +30,72 @@ function getCurrentTime() {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
-    timeZone: 'Africa/Nairobi'
+    timeZone: config.timezone
   })
 }
 
-// this function is called directly from index.js on startup
+// ✅ called from index.js on startup and on reconnect
 export function startAutoBio(sock) {
-  if (isRunning) return
+  // ✅ if already running with a different sock — stop old interval first
+  if (bioInterval) {
+    clearInterval(bioInterval)
+    bioInterval = null
+  }
 
   isRunning = true
+  currentSock = sock // ✅ always update to latest sock instance
 
   const updateBio = async () => {
     try {
+      // ✅ use currentSock so reconnects dont break it
       const bio = `🤖 ${config.botName} | 🕐 ${getCurrentTime()} | ${getRandomQuote()}`
-      await sock.updateProfileStatus(bio)
+      await currentSock.updateProfileStatus(bio)
     } catch (err) {
-      console.error('Bio update error:', err.message)
+      // ✅ if connection is lost stop the interval to prevent spam errors
+      if (
+        err.message?.includes('Connection Closed') ||
+        err.message?.includes('timed out') ||
+        err.message?.includes('not-authorized')
+      ) {
+        console.error('Bio update paused — connection issue:', err.message)
+        clearInterval(bioInterval)
+        bioInterval = null
+        isRunning = false
+      } else {
+        console.error('Bio update error:', err.message)
+      }
     }
   }
 
-  // run immediately then every 60 seconds
+  // ✅ run immediately then every 60 seconds
   updateBio()
   bioInterval = setInterval(updateBio, 60 * 1000)
 }
 
-export function stopAutoBio(sock) {
+export function stopAutoBio() {
   if (!isRunning) return
 
   clearInterval(bioInterval)
   bioInterval = null
   isRunning = false
 
-  try {
-    sock.updateProfileStatus(`🤖 ${config.botName} | Always online ⚡`)
-  } catch (err) {
-    console.error('Bio reset error:', err.message)
+  // ✅ reset bio if sock is available
+  if (currentSock) {
+    currentSock.updateProfileStatus(`🤖 ${config.botName} | Always online ⚡`)
+      .catch(err => console.error('Bio reset error:', err.message))
   }
+
+  currentSock = null
 }
 
 export default {
   name: 'autobio',
   ownerOnly: true,
   description: 'Toggle live auto-updating WhatsApp bio',
-  async execute(sock, chatJid, sender, msg, commands) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const args = text.trim().split(' ')
-    const option = args[1]?.toLowerCase()
+    // ✅ use args parameter passed from index.js
+    const option = args[0]?.toLowerCase()
 
     if (!option || (option !== 'on' && option !== 'off')) {
       await sock.sendMessage(chatJid, {
@@ -91,19 +108,19 @@ export default {
 - ${config.prefix}autobio on — start live bio
 - ${config.prefix}autobio off — stop live bio
 
-*Status:* ${isRunning ? '🟢 Running' : '🔴 Stopped'}`,
-        quoted: msg
-      })
+*Status:* ${isRunning ? '🟢 Running' : '🔴 Stopped'}
+
+*Bio Format:*
+_🤖 CYPHERON | 🕐 02:45 PM | Always online ⚡_`
+      }, { quoted: msg })
       return
     }
 
     if (option === 'on') {
-
       if (isRunning) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto bio is already *running!*\nType *${config.prefix}autobio off* to stop it.`,
-          quoted: msg
-        })
+          text: `⚠️ Auto bio is already *running!*\nType *${config.prefix}autobio off* to stop it.`
+        }, { quoted: msg })
         return
       }
 
@@ -117,25 +134,22 @@ export default {
 
 ✅ *Auto bio is now ON!*
 
-Format:
+*Format:*
 _🤖 CYPHERON | 🕐 02:45 PM | Always online ⚡_
 
 Updates every *1 minute*
-Type *${config.prefix}autobio off* to stop.`,
-        quoted: msg
-      })
+Type *${config.prefix}autobio off* to stop.`
+      }, { quoted: msg })
 
     } else if (option === 'off') {
-
       if (!isRunning) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ Auto bio is already *stopped!*\nType *${config.prefix}autobio on* to start it.`,
-          quoted: msg
-        })
+          text: `⚠️ Auto bio is already *stopped!*\nType *${config.prefix}autobio on* to start it.`
+        }, { quoted: msg })
         return
       }
 
-      stopAutoBio(sock)
+      stopAutoBio()
 
       await sock.sendMessage(chatJid, {
         text:
@@ -146,10 +160,8 @@ Type *${config.prefix}autobio off* to stop.`,
 🔴 *Auto bio stopped!*
 
 Bio reset to default.
-Type *${config.prefix}autobio on* to restart.`,
-        quoted: msg
-      })
+Type *${config.prefix}autobio on* to restart.`
+      }, { quoted: msg })
     }
-
   }
 }

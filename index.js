@@ -50,6 +50,10 @@ let serverStarted = false
 // ✅ prevent duplicate message processing
 const processedMessages = new Set()
 
+// ✅ message cache for anti-delete
+const messageStore = new Map()
+const MAX_STORE_SIZE = 500
+
 async function startBot() {
 
   // ✅ decode session if provided
@@ -149,7 +153,6 @@ async function startBot() {
       if (shouldReconnect) {
         log.reconnect('Connection lost. Reconnecting...')
         serverState.pairingCodeRequested = false
-        // ✅ safer reconnect delay
         setTimeout(() => startBot(), 5000)
       } else {
         log.error('Logged out. Delete the auth_info folder and restart.')
@@ -217,6 +220,15 @@ Type *${config.prefix}menu* to see all available commands.`
 
         if (!msg.message) continue
 
+        // ✅ store message in cache
+        if (msg.key && msg.key.id) {
+          messageStore.set(msg.key.id, msg)
+          if (messageStore.size > MAX_STORE_SIZE) {
+            const firstKey = messageStore.keys().next().value
+            messageStore.delete(firstKey)
+          }
+        }
+
         // ✅ prevent duplicate message processing
         if (processedMessages.has(msg.key.id)) continue
         processedMessages.add(msg.key.id)
@@ -270,7 +282,67 @@ Type *${config.prefix}menu* to see all available commands.`
         }
 
         const isGroup = chatJid.endsWith('@g.us')
-        const sender = isGroup ? msg.key.participant : chatJid
+        const sender = isGroup
+          ? (msg.key.participant || chatJid)
+          : (msg.key.fromMe ? (sock.user.id.split(':')[0] + '@s.whatsapp.net') : chatJid)
+
+        // ✅ check for message revocation (anti-delete)
+        if (msg.message?.protocolMessage?.type === 0) {
+          const deletedKey = msg.message.protocolMessage.key
+          if (deletedKey && deletedKey.id) {
+            const originalMsg = messageStore.get(deletedKey.id)
+            if (originalMsg) {
+              const deleter = msg.key.participant || msg.key.remoteJid
+              if ((!isGroup && config.antiDeletePrivate) || (isGroup && config.antiDeleteGroup)) {
+                const senderNumber = deleter.replace('@s.whatsapp.net', '').replace('@lid', '')
+                const header = `╔════════════════════════╗\n║    🚫 *ANTI-DELETE* 🚫\n╚════════════════════════╝\n\n👤 *From:* @${senderNumber}\n`
+                const footer = `\n\n📢 *Channel:* wa.me/channel/0029VbCHhynLSmbdAmqOD438`
+
+                const textContent = originalMsg.message?.conversation || originalMsg.message?.extendedTextMessage?.text || ''
+                const isMedia = originalMsg.message?.imageMessage || originalMsg.message?.videoMessage || originalMsg.message?.audioMessage || originalMsg.message?.documentMessage || originalMsg.message?.stickerMessage
+                const isViewOnce = originalMsg.message?.viewOnceMessage || originalMsg.message?.viewOnceMessageV2 || originalMsg.message?.viewOnceMessageV2Extension
+
+                if (textContent && !isMedia && !isViewOnce) {
+                  const finalMsg = `${header}💬 *Message:*\n${textContent}${footer}`
+                  await sock.sendMessage(chatJid, { text: finalMsg, mentions: [deleter] })
+                  log.info(`Recovered deleted TEXT message from ${chalk.yellow(deleter)}`)
+                } else {
+                  try {
+                    const buffer = await downloadMediaMessage(
+                      originalMsg,
+                      'buffer',
+                      {},
+                      { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage }
+                    )
+
+                    const actualObj = originalMsg.message?.viewOnceMessage?.message || originalMsg.message?.viewOnceMessageV2?.message || originalMsg.message?.viewOnceMessageV2Extension?.message || originalMsg.message
+                    const mediaMsg = actualObj?.imageMessage || actualObj?.videoMessage || actualObj?.documentMessage
+
+                    const captionContent = mediaMsg?.caption ? `\n📝 *Caption:*\n${mediaMsg.caption}` : ''
+                    const finalCaption = `${header}${captionContent}${footer}`
+
+                    if (actualObj?.imageMessage) {
+                      await sock.sendMessage(chatJid, { image: buffer, caption: finalCaption, mentions: [deleter] })
+                    } else if (actualObj?.videoMessage) {
+                      await sock.sendMessage(chatJid, { video: buffer, caption: finalCaption, mentions: [deleter] })
+                    } else if (actualObj?.documentMessage) {
+                      await sock.sendMessage(chatJid, { document: buffer, caption: finalCaption, mimetype: actualObj.documentMessage.mimetype, fileName: actualObj.documentMessage.fileName || 'Deleted_Document', mentions: [deleter] })
+                    } else {
+                      await sock.sendMessage(chatJid, { text: `${header}⚠️ *Note:* Media recovered below (cannot contain caption).${footer}`, mentions: [deleter] })
+                      if (actualObj?.audioMessage) await sock.sendMessage(chatJid, { audio: buffer, mimetype: 'audio/mp4', ptt: actualObj.audioMessage.ptt })
+                      if (actualObj?.stickerMessage) await sock.sendMessage(chatJid, { sticker: buffer })
+                    }
+                    log.info(`Recovered deleted MEDIA message from ${chalk.yellow(deleter)}`)
+                  } catch (e) {
+                    await sock.sendMessage(chatJid, { text: `${header}⚠️ *Note:* Media download failed. Forwarding encrypted payload...${footer}`, mentions: [deleter] })
+                    await sock.sendMessage(chatJid, { forward: originalMsg })
+                  }
+                }
+              }
+            }
+          }
+          continue
+        }
 
         const text =
           msg.message?.conversation ||
@@ -296,10 +368,14 @@ Type *${config.prefix}menu* to see all available commands.`
 
         // ✅ anti view once — private auto reveal
         if (!isGroup && !msg.key.fromMe && isAntiViewOncePrivateEnabled()) {
-          const viewOnceMsg =
-            msg.message?.viewOnceMessage?.message ||
-            msg.message?.viewOnceMessageV2?.message ||
-            msg.message?.viewOnceMessageV2Extension?.message
+
+          // ✅ detect which view once container is present
+          const viewOnceContainer =
+            msg.message?.viewOnceMessage ||
+            msg.message?.viewOnceMessageV2 ||
+            msg.message?.viewOnceMessageV2Extension
+
+          const viewOnceMsg = viewOnceContainer?.message
 
           if (viewOnceMsg) {
             try {
@@ -309,10 +385,17 @@ Type *${config.prefix}menu* to see all available commands.`
                 viewOnceMsg.audioMessage
 
               if (mediaMsg) {
+                // ✅ remove viewOnce flag before downloading
                 mediaMsg.viewOnce = false
 
+                // ✅ reconstruct message for correct downloading
+                const targetMsg = {
+                  key: msg.key,
+                  message: msg.message
+                }
+
                 const buffer = await downloadMediaMessage(
-                  msg,
+                  targetMsg,
                   'buffer',
                   {},
                   {
@@ -370,9 +453,8 @@ The owner is currently unavailable but your message has been received.
 
 Type *${config.prefix}menu* to see what I can do for you!
 
-_This is an automated message._`,
-              quoted: msg
-            })
+_This is an automated message._`
+            }, { quoted: msg })
             log.info(`Welcome message sent to ${chalk.yellow(sender)}`)
           }
         }
@@ -400,7 +482,7 @@ _This is an automated message._`,
           }
         }
 
-        // ✅ handle .vv command with dot prefix in groups
+        // ✅ handle .vv command with dot prefix — groups only
         if (isGroup && body.toLowerCase() === '.vv') {
           const vvCommand = commands.get('vv')
           if (vvCommand) {

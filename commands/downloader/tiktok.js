@@ -1,18 +1,12 @@
-import pkg from 'gifted-dls'
-const { tiktok } = pkg
 import config from '../../config.js'
 
 export default {
   name: 'tiktok',
   ownerOnly: false,
   description: 'Download TikTok video without watermark',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const url = text.slice(config.prefix.length + 'tiktok'.length).trim()
+    const url = args[0]
 
     if (!url || !url.startsWith('http')) {
       await sock.sendMessage(chatJid, {
@@ -20,50 +14,51 @@ export default {
 `❌ Please provide a TikTok URL.
 
 *Usage:* ${config.prefix}tiktok <url>
-*Example:* ${config.prefix}tiktok https://www.tiktok.com/@user/video/123`,
-        quoted: msg
-      })
+*Example:* ${config.prefix}tiktok https://www.tiktok.com/@user/video/123`
+      }, { quoted: msg })
       return
     }
 
     try {
       await sock.sendMessage(chatJid, {
-        text: '⏳ Downloading TikTok video...',
-        quoted: msg
-      })
+        text: '⏳ Downloading TikTok video...'
+      }, { quoted: msg })
 
-      const result = await tiktok(url)
+      const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`
+      const response = await fetch(apiUrl)
+      const data = await response.json()
 
-      if (!result || !result.data) {
+      if (!data || data.code !== 0 || !data.data) {
         await sock.sendMessage(chatJid, {
-          text: '❌ Failed to download TikTok video. Please check the URL and try again.',
-          quoted: msg
-        })
+          text: '❌ Failed to download. Please check the URL and try again.'
+        }, { quoted: msg })
         return
       }
 
-      const data = result.data
+      const video = data.data
 
-      // send video without watermark
       await sock.sendMessage(chatJid, {
-        video: { url: data.video_nowm || data.video },
+        video: { url: video.play || video.wmplay },
         caption:
 `✅ *TikTok Video Downloaded!*
 
-👤 *Author:* ${data.author?.nickname || 'Unknown'}
-💬 *Caption:* ${data.title || 'No caption'}
-❤️ *Likes:* ${data.stats?.likeCount || 0}
-💬 *Comments:* ${data.stats?.commentCount || 0}
+👤 *Author:* ${video.author?.nickname || 'Unknown'}
+💬 *Title:* ${video.title || 'No caption'}
+❤️ *Likes:* ${video.digg_count || 0}
+💬 *Comments:* ${video.comment_count || 0}
+▶️ *Views:* ${video.play_count || 0}
 
-_Downloaded by Cypheron Bot 🤖_`,
-        quoted: msg
-      })
+━━━━━━━━━━━━━━━━━━━━━━━━
+📢 *Follow our channel:*
+https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+_Downloaded by Cypheron Bot 🤖_`
+      }, { quoted: msg })
 
     } catch (err) {
       await sock.sendMessage(chatJid, {
-        text: `❌ Failed to download: ${err.message}`,
-        quoted: msg
-      })
+        text: `❌ Failed to download: ${err.message}`
+      }, { quoted: msg })
     }
   }
 }

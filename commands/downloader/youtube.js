@@ -1,18 +1,12 @@
-import pkg from 'gifted-dls'
-const { youtube } = pkg
 import config from '../../config.js'
+import ytdl from 'ytdl-core'
 
 export default {
   name: 'yt',
   ownerOnly: false,
   description: 'Download YouTube video or audio',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const args = text.slice(config.prefix.length + 'yt'.length).trim().split(' ')
     const type = args[0]?.toLowerCase()
     const url = args[1]
 
@@ -22,70 +16,112 @@ export default {
 `❌ Please provide a type and YouTube URL.
 
 *Usage:*
-- ${config.prefix}yt video <url> — download video
-- ${config.prefix}yt audio <url> — download audio
+- ${config.prefix}yt video <url>
+- ${config.prefix}yt audio <url>
 
 *Example:*
 ${config.prefix}yt video https://youtube.com/watch?v=xxxxx
-${config.prefix}yt audio https://youtube.com/watch?v=xxxxx`,
-        quoted: msg
-      })
+${config.prefix}yt audio https://youtube.com/watch?v=xxxxx`
+      }, { quoted: msg })
       return
     }
 
     if (type !== 'video' && type !== 'audio') {
       await sock.sendMessage(chatJid, {
-        text: `❌ Invalid type. Use *video* or *audio*.\n\n*Usage:* ${config.prefix}yt video/audio <url>`,
-        quoted: msg
-      })
+        text: `❌ Invalid type. Use *video* or *audio*.`
+      }, { quoted: msg })
+      return
+    }
+
+    if (!ytdl.validateURL(url)) {
+      await sock.sendMessage(chatJid, {
+        text: '❌ Invalid YouTube URL. Please check and try again.'
+      }, { quoted: msg })
       return
     }
 
     try {
       await sock.sendMessage(chatJid, {
-        text: `⏳ Downloading YouTube ${type}...`,
-        quoted: msg
-      })
+        text: `⏳ Downloading YouTube ${type}...`
+      }, { quoted: msg })
 
-      const result = await youtube(url, type === 'audio' ? 'mp3' : 'mp4')
+      const info = await ytdl.getInfo(url)
+      const title = info.videoDetails.title
+      const duration = info.videoDetails.lengthSeconds
+      const views = parseInt(info.videoDetails.viewCount).toLocaleString()
+      const author = info.videoDetails.author.name
 
-      if (!result || !result.data) {
-        await sock.sendMessage(chatJid, {
-          text: '❌ Failed to download. Please check the URL and try again.',
-          quoted: msg
-        })
-        return
-      }
+      const minutes = Math.floor(duration / 60)
+      const seconds = duration % 60
+      const durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`
 
-      const data = result.data
+      const channelLink =
+`\n━━━━━━━━━━━━━━━━━━━━━━━━
+📢 *Follow our channel:*
+https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+_Downloaded by Cypheron Bot 🤖_`
 
       if (type === 'audio') {
-        await sock.sendMessage(chatJid, {
-          audio: { url: data.download_url },
-          mimetype: 'audio/mp4',
-          ptt: false,
-          quoted: msg
+        const audioFormat = ytdl.chooseFormat(info.formats, {
+          quality: 'highestaudio',
+          filter: 'audioonly'
         })
-      } else {
+
+        if (!audioFormat) {
+          await sock.sendMessage(chatJid, {
+            text: '❌ No audio format available for this video.'
+          }, { quoted: msg })
+          return
+        }
+
         await sock.sendMessage(chatJid, {
-          video: { url: data.download_url },
+          audio: { url: audioFormat.url },
+          mimetype: 'audio/mp4',
+          ptt: false
+        }, { quoted: msg })
+
+        await sock.sendMessage(chatJid, {
+          text:
+`✅ *YouTube Audio Downloaded!*
+
+🎵 *Title:* ${title}
+👤 *Author:* ${author}
+⏱️ *Duration:* ${durationStr}
+▶️ *Views:* ${views}
+${channelLink}`
+        })
+
+      } else {
+        const videoFormat = ytdl.chooseFormat(info.formats, {
+          quality: 'highest',
+          filter: 'audioandvideo'
+        })
+
+        if (!videoFormat) {
+          await sock.sendMessage(chatJid, {
+            text: '❌ No video format available. Try audio instead.'
+          }, { quoted: msg })
+          return
+        }
+
+        await sock.sendMessage(chatJid, {
+          video: { url: videoFormat.url },
           caption:
 `✅ *YouTube Video Downloaded!*
 
-🎬 *Title:* ${data.title || 'Unknown'}
-⏱️ *Duration:* ${data.duration || 'Unknown'}
-👁️ *Views:* ${data.views || 0}
-
-_Downloaded by Cypheron Bot 🤖_`,
-          quoted: msg
-        })
+🎬 *Title:* ${title}
+👤 *Author:* ${author}
+⏱️ *Duration:* ${durationStr}
+▶️ *Views:* ${views}
+${channelLink}`
+        }, { quoted: msg })
       }
 
     } catch (err) {
       await sock.sendMessage(chatJid, {
-        text: `❌ Failed to download: ${err.message}`,
-        quoted: msg
-      })
+        text: `❌ Failed to download: ${err.message}`
+      }, { quoted: msg })
     }
   }
 }

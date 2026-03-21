@@ -80,6 +80,7 @@ export default {
       autorecording: '👑 Owner',
       autowelcome: '👑 Owner',
       antiviewonce: '👑 Owner',
+      antidelete: '👑 Owner',
       block: '👑 Owner',
       unblock: '👑 Owner',
       eval: '👑 Owner',
@@ -128,8 +129,9 @@ export default {
       goodbye: '👥 Group',
       antilink: '👥 Group',
       antispam: '👥 Group',
-      vv: '👥 Group',
-
+     vv: '👥 Group',
+tagall: '👥 Group',
+hidetag: '👥 Group',
       // downloader
       tiktok: '⬇️ Downloader',
       yt: '⬇️ Downloader',

@@ -1,6 +1,8 @@
-import { downloadMediaMessage } from 'gifted-baileys'
+import pkg from 'gifted-baileys'
 import pino from 'pino'
 import { isAntiViewOnceGroupEnabled } from '../owner/antiviewonce.js'
+
+const { downloadMediaMessage } = pkg
 
 export default {
   name: 'vv',
@@ -21,13 +23,14 @@ export default {
     // ✅ check if group anti view once is enabled
     if (!isAntiViewOnceGroupEnabled()) {
       await sock.sendMessage(chatJid, {
-        text: '❌ Anti view once is not enabled for groups.'
+        text: '❌ Anti view once is not enabled for groups.\n\nAsk the owner to run *!antiviewonce group on*'
       }, { quoted: msg })
       return
     }
 
     // ✅ check if replying to a message
-    const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage
+    const contextInfo = msg.message?.extendedTextMessage?.contextInfo
+    const quotedMsg = contextInfo?.quotedMessage
 
     if (!quotedMsg) {
       await sock.sendMessage(chatJid, {
@@ -36,7 +39,7 @@ export default {
       return
     }
 
-    // ✅ check if quoted message is view once
+    // ✅ unwrap view once message from quoted context
     const viewOnceMsg =
       quotedMsg?.viewOnceMessage?.message ||
       quotedMsg?.viewOnceMessageV2?.message ||
@@ -50,7 +53,7 @@ export default {
     }
 
     try {
-      // ✅ get the actual media message inside view once
+      // ✅ get media inside view once
       const mediaMsg =
         viewOnceMsg.imageMessage ||
         viewOnceMsg.videoMessage ||
@@ -63,12 +66,23 @@ export default {
         return
       }
 
-      // ✅ remove viewOnce flag so it can be downloaded
+      // ✅ remove viewOnce flag before downloading
       mediaMsg.viewOnce = false
 
+      // ✅ reconstruct the original message for downloading
       const targetMsg = {
-        key: msg.message.extendedTextMessage.contextInfo.stanzaId,
-        message: viewOnceMsg
+        key: {
+          remoteJid: chatJid,
+          fromMe: false,
+          id: contextInfo.stanzaId,
+          participant: contextInfo.participant || undefined
+        },
+        message: {
+          // ✅ wrap back into original view once container
+          viewOnceMessageV2: {
+            message: viewOnceMsg
+          }
+        }
       }
 
       const buffer = await downloadMediaMessage(
@@ -103,6 +117,8 @@ export default {
           ptt: viewOnceMsg.audioMessage.ptt || false
         })
       }
+
+      log.success(`👁️ View once revealed by ${senderNumber} in ${chatJid}`)
 
     } catch (err) {
       await sock.sendMessage(chatJid, {

@@ -3,7 +3,7 @@ import 'dotenv/config'
 const config = {
   prefix: '!',
   botName: 'CYPHERON',
-  owner: '254700581291@s.whatsapp.net',
+  owner: '254731242169@s.whatsapp.net',
   ownerLid: process.env.OWNER_LID || '186784386445322@lid',
   timezone: 'Africa/Nairobi',
 
@@ -24,11 +24,13 @@ const config = {
   // ✅ anti features
   antiViewOncePrivate: true,
   antiViewOnceGroup: true,
+  antiDeletePrivate: true,
+  antiDeleteGroup: true,
 
   // ✅ group settings
   antilink: false,
   antispam: false,
-  welcome: false,
+  welcome: true,
   goodbye: true,
 
   // ✅ auto welcome time settings

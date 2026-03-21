@@ -41,20 +41,13 @@ export async function loadCommands() {
 export function isOwner(sender) {
   if (!sender) return false
 
-  // extract numeric part
-  const senderNumber = sender.replace(/\D/g, '')
+  // extract the base ID (before : or @) safely, ignoring device identifiers
+  const baseSender = sender.split(':')[0].split('@')[0].replace(/\D/g, '')
 
-  const ownerNumber = config.owner.replace(/\D/g, '')
+  const ownerNumber = config.owner ? config.owner.split('@')[0].replace(/\D/g, '') : ''
+  const ownerLid = config.ownerLid ? config.ownerLid.split('@')[0].replace(/\D/g, '') : ''
 
-  const isMatch = senderNumber.endsWith(ownerNumber)
-
-  if (!isMatch) {
-    console.log(
-      chalk.yellow(
-        `⚠️ Owner check failed — sender: ${senderNumber} | owner: ${ownerNumber}`
-      )
-    )
-  }
+  const isMatch = baseSender === ownerNumber || (ownerLid && baseSender === ownerLid)
 
   return isMatch
 }

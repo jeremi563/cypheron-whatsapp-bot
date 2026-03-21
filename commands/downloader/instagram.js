@@ -1,18 +1,12 @@
-import pkg from 'gifted-dls'
-const { instagram } = pkg
 import config from '../../config.js'
 
 export default {
   name: 'instagram',
   ownerOnly: false,
   description: 'Download Instagram posts and reels',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const url = text.slice(config.prefix.length + 'instagram'.length).trim()
+    const url = args[0]
 
     if (!url || !url.startsWith('http')) {
       await sock.sendMessage(chatJid, {
@@ -20,61 +14,65 @@ export default {
 `❌ Please provide an Instagram URL.
 
 *Usage:* ${config.prefix}instagram <url>
-*Example:* ${config.prefix}instagram https://www.instagram.com/p/xxxxx`,
-        quoted: msg
-      })
+*Example:* ${config.prefix}instagram https://www.instagram.com/p/xxxxx`
+      }, { quoted: msg })
       return
     }
 
     try {
       await sock.sendMessage(chatJid, {
-        text: '⏳ Downloading Instagram content...',
-        quoted: msg
+        text: '⏳ Downloading Instagram content...'
+      }, { quoted: msg })
+
+      const response = await fetch('https://snapinsta.app/api/ajaxSearch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        body: `q=${encodeURIComponent(url)}&t=media&lang=en`
       })
 
-      const result = await instagram(url)
+      const data = await response.json()
 
-      if (!result || !result.data) {
+      if (!data || data.status !== 'ok') {
         await sock.sendMessage(chatJid, {
-          text: '❌ Failed to download. Please check the URL and try again.',
-          quoted: msg
-        })
+          text: '❌ Failed to download. Please check the URL and try again.'
+        }, { quoted: msg })
         return
       }
 
-      const data = result.data
+      const html = data.data
+      const videoMatch = html.match(/href="(https:\/\/[^"]+\.mp4[^"]*)"/)
+      const imageMatch = html.match(/src="(https:\/\/[^"]+\.jpg[^"]*)"/)
 
-      // handle video posts
-      if (data.type === 'video' || data.video_url) {
+      const channelCaption =
+`\n━━━━━━━━━━━━━━━━━━━━━━━━
+📢 *Follow our channel:*
+https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+_Downloaded by Cypheron Bot 🤖_`
+
+      if (videoMatch && videoMatch[1]) {
         await sock.sendMessage(chatJid, {
-          video: { url: data.video_url || data.url },
-          caption:
-`✅ *Instagram Video Downloaded!*
-
-💬 *Caption:* ${data.caption || 'No caption'}
-
-_Downloaded by Cypheron Bot 🤖_`,
-          quoted: msg
-        })
+          video: { url: videoMatch[1] },
+          caption: `✅ *Instagram Video Downloaded!*${channelCaption}`
+        }, { quoted: msg })
+      } else if (imageMatch && imageMatch[1]) {
+        await sock.sendMessage(chatJid, {
+          image: { url: imageMatch[1] },
+          caption: `✅ *Instagram Image Downloaded!*${channelCaption}`
+        }, { quoted: msg })
       } else {
-        // handle image posts
         await sock.sendMessage(chatJid, {
-          image: { url: data.url || data.image_url },
-          caption:
-`✅ *Instagram Image Downloaded!*
-
-💬 *Caption:* ${data.caption || 'No caption'}
-
-_Downloaded by Cypheron Bot 🤖_`,
-          quoted: msg
-        })
+          text: '❌ Could not extract media. The post may be private.'
+        }, { quoted: msg })
       }
 
     } catch (err) {
       await sock.sendMessage(chatJid, {
-        text: `❌ Failed to download: ${err.message}`,
-        quoted: msg
-      })
+        text: `❌ Failed to download: ${err.message}`
+      }, { quoted: msg })
     }
   }
 }
