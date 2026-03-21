@@ -25,6 +25,15 @@ const bold = (text) => `${colors.bright}${text}${colors.reset}`
 // ✅ sleep function
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
+// ✅ detect environment
+function detectEnvironment() {
+  if (process.env.CODESPACES === 'true') return 'codespaces'
+  if (process.env.GITPOD_WORKSPACE_ID) return 'gitpod'
+  if (process.env.RENDER) return 'render'
+  if (process.env.RAILWAY_ENVIRONMENT) return 'railway'
+  return 'local'
+}
+
 // ✅ animated spinner
 async function spinner(text, task, successText) {
   const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -85,6 +94,14 @@ async function showBanner() {
   console.clear()
   await sleep(300)
 
+  const env = detectEnvironment()
+  const envLabel =
+    env === 'codespaces' ? '☁️  GitHub Codespaces' :
+    env === 'gitpod' ? '☁️  Gitpod' :
+    env === 'render' ? '🚀 Render' :
+    env === 'railway' ? '🚀 Railway' :
+    '💻 Local Machine'
+
   const banner = `
 ${c('green', '╔══════════════════════════════════════════════════╗')}
 ${c('green', '║')}${c('cyan', bold('          ⚡ CYPHERON BOT — SETUP WIZARD           '))}${c('green', '║')}
@@ -96,6 +113,7 @@ ${c('green', '║')}${c('yellow', '    👤 Developer : Jeremia Obed            
 ${c('green', '║')}${c('yellow', '    🌐 GitHub    : github.com/jeremi563/my-bot     ')}${c('green', '║')}
 ${c('green', '║')}${c('yellow', '    📢 Channel   : whatsapp.com/channel/...        ')}${c('green', '║')}
 ${c('green', '║')}${c('yellow', '    📦 Version   : 1.0.0                           ')}${c('green', '║')}
+${c('green', '║')}${c('cyan',   `    🖥️  Environment: ${envLabel.padEnd(28)}`)}${c('green', '║')}
 ${c('green', '╚══════════════════════════════════════════════════╝')}
 `
 
@@ -105,6 +123,25 @@ ${c('green', '╚═════════════════════
   }
 
   await sleep(500)
+}
+
+// ✅ show environment specific instructions
+async function showEnvironmentGuide() {
+  const env = detectEnvironment()
+
+  if (env === 'codespaces' || env === 'gitpod') {
+    console.log(`\n${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`)
+    console.log(c('cyan', bold(`  ☁️  CLOUD ENVIRONMENT DETECTED`)))
+    console.log(`${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`)
+    console.log(`  ${c('yellow', '⚠️  Important notes for cloud environments:')}\n`)
+    console.log(`  ${c('white', '1.')} Get your Session ID from:`)
+    console.log(`     ${c('green', 'https://cypheron-session.onrender.com')}\n`)
+    console.log(`  ${c('white', '2.')} Paste it when prompted below\n`)
+    console.log(`  ${c('white', '3.')} The bot will run directly in this terminal\n`)
+    console.log(`  ${c('white', '4.')} To keep it running close the terminal last\n`)
+    console.log(`${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`)
+    await sleep(1000)
+  }
 }
 
 // ✅ check Node.js version
@@ -188,7 +225,7 @@ async function installDependencies() {
       ['install'],
       {
         stdio: 'pipe',
-        shell: true // ✅ fixes EINVAL error on Windows
+        shell: true
       }
     )
 
@@ -239,7 +276,7 @@ async function promptEnvSetup() {
   console.log(`${c('yellow', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`)
 
   const sessionId = await ask(
-    `  ${c('cyan', '🔑 Session ID')} ${c('white', '(leave empty to use web panel):')} `
+    `  ${c('cyan', '🔑 Session ID')} ${c('white', '(leave empty to skip):')} `
   )
 
   const gnewsKey = await ask(
@@ -299,6 +336,28 @@ async function countdown() {
   await sleep(500)
 }
 
+// ✅ show post setup instructions
+async function showInstructions() {
+  const env = detectEnvironment()
+
+  console.log(`\n${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`)
+  console.log(c('cyan', bold('  📋 USEFUL COMMANDS')))
+  console.log(`${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`)
+
+  console.log(`  ${c('green', 'npm start')}        ${c('white', '— Start the bot')}`)
+  console.log(`  ${c('green', 'npm run setup')}    ${c('white', '— Run setup wizard again')}`)
+
+  if (env === 'codespaces' || env === 'gitpod') {
+    console.log(`\n  ${c('yellow', '☁️  Cloud Tips:')}`)
+    console.log(`  ${c('white', '• Keep this terminal open while bot is running')}`)
+    console.log(`  ${c('white', '• If session expires get a new one from:')}`)
+    console.log(`    ${c('green', 'https://cypheron-session.onrender.com')}`)
+    console.log(`  ${c('white', '• For 24/7 deployment use Render or Railway')}`)
+  }
+
+  console.log(`\n${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`)
+}
+
 // ✅ start the bot
 function startBot() {
   const bot = spawn(
@@ -306,13 +365,14 @@ function startBot() {
     ['index.js'],
     {
       stdio: 'inherit',
-      shell: true // ✅ fixes EINVAL error on Windows
+      shell: true
     }
   )
 
   bot.on('close', (code) => {
     if (code !== 0) {
       console.log(`\n${c('red', `Bot exited with code ${code}`)}`)
+      console.log(`${c('yellow', 'Run npm start to restart the bot.')}`)
     }
   })
 }
@@ -322,6 +382,9 @@ async function main() {
   try {
 
     await showBanner()
+
+    // ✅ show environment guide
+    await showEnvironmentGuide()
 
     console.log(`${c('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`)
     console.log(c('cyan', bold('  🔍 RUNNING CHECKS')))
@@ -357,13 +420,16 @@ async function main() {
       )
     }
 
-    // step 6 — show completion
+    // step 6 — show instructions
+    await showInstructions()
+
+    // step 7 — show completion
     await showCompletion()
 
-    // step 7 — countdown
+    // step 8 — countdown
     await countdown()
 
-    // step 8 — start the bot
+    // step 9 — start the bot
     startBot()
 
   } catch (err) {
@@ -376,7 +442,7 @@ async function main() {
     )
     console.log(`  ${c('red', err.message)}\n`)
     console.log(`  ${c('yellow', 'Please fix the error above and run setup again.')}`)
-    console.log(`  ${c('yellow', 'Run: node setup.js')}\n`)
+    console.log(`  ${c('yellow', 'Run: npm run setup')}\n`)
     process.exit(1)
   }
 }

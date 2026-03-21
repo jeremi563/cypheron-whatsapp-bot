@@ -25,3 +25,4 @@ proxy.txt
 index.backup.js
 *.log 
 obfuscate.js  
+notes.js
