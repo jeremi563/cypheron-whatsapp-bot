@@ -14,29 +14,53 @@ export default {
     const image = readFileSync(join(__dirname, '../../assets/bot.jpg'))
 
     const textData =
-`╭━━ [ 🤖 *CYPHERON BOT* ] ━━
-┃
-┃ *About Cypheron Bot*
-┃
-┃ Cypheron is a powerful WhatsApp automation bot built with Node.js and Gifted Baileys.
-┃
-┃ *What I can do:*
-┃ ⚡ Auto react to messages
-┃ 👁️ Auto view statuses
-┃ ❤️ Auto like statuses
-┃ 📡 Track contact presence
-┃ 🤖 Auto update bio
-┃ 💬 Auto welcome messages
-┃ 📋 And much more!
-┃
-┃ *Developer:* Jeremia Obed
-┃ *Built with:* ❤️ and Node.js
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`╔════════════════════════════╗
+║     🤖 *CYPHERON BOT*      ║
+║   _Your WhatsApp Assistant_ ║
+╚════════════════════════════╝
 
-📢 *Channel:* wa.me/channel/0029VbCHhynLSmbdAmqOD438
+*Cypheron* is a powerful WhatsApp automation bot built with Node.js and Gifted Baileys — always online, never sleeping.
 
-*_Tap the image above to view our Source Code!_* 🐙`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ *What I Can Do:*
+
+⚡ Auto react to messages
+👁️ Auto view and like statuses
+🤖 Auto updating bio with live clock
+💬 Auto welcome messages
+📡 Contact presence tracker
+🔒 Anti delete and anti view once
+🛡️ Anti link and anti spam protection
+🎵 Media conversion and downloading
+⬇️ Download from TikTok, YouTube, Instagram and more
+👥 Full group management
+🔍 Search — weather, news, movies, lyrics
+🎮 Fun — facts, memes, truth, ship
+🔧 Utility — QR, calculator, password and more
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👨‍💻 *Developer:* Jeremia Obed
+🛠️ *Built with:* Node.js & Gifted Baileys
+📦 *Version:* 1.0.0
+🌍 *Platform:* WhatsApp
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 *Links:*
+
+📢 *Channel:*
+https://whatsapp.com/channel/0029VbCHhynLSmbdAmqOD438
+
+🔑 *Get Session ID:*
+https://cypheron-session.onrender.com
+
+🐙 *GitHub:*
+https://github.com/jeremi563/cypheron-whatsapp-bot
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_Powered by Cypheron Bot 🤖_`
 
     await sock.sendMessage(chatJid, {
       text: textData,
@@ -44,10 +68,10 @@ export default {
         forwardingScore: 999,
         isForwarded: true,
         externalAdReply: {
-          title: "🤖 Cypheron Bot",
-          body: "v1.0.0 | Official Bot",
+          title: '🤖 Cypheron Bot — Your WhatsApp Assistant',
+          body: 'v1.0.0 | Built by Jeremia Obed',
           thumbnail: image,
-          sourceUrl: "https://github.com/jeremi563/cypheron-whatsapp-bot",
+          sourceUrl: 'https://github.com/jeremi563/cypheron-whatsapp-bot',
           mediaType: 1,
           renderLargerThumbnail: true
         }
