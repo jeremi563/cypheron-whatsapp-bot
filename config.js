@@ -18,8 +18,8 @@ const config = {
   reactEmojis: ['❤️', '🔥', '👁️', '🤖', '👏', '🦴', '💯', '✨', '📌', '⚡'],
 
   // ✅ auto typing and recording
-  autoTyping: true,
-  autoRecording: true,
+  autoTyping: false,
+  autoRecording: false,
 
   // ✅ anti features
   antiViewOncePrivate: true,
@@ -30,7 +30,7 @@ const config = {
   // ✅ group settings
   antilink: false,
   antispam: false,
-  welcome: true,
+  welcome: false,
   goodbye: true,
 
   // ✅ auto welcome time settings
