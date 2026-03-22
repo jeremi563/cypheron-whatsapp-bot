@@ -80,6 +80,7 @@ export default {
       autorecording: '👑 Owner',
       autowelcome: '👑 Owner',
       antiviewonce: '👑 Owner',
+      anticall: '👑 Owner',
       antidelete: '👑 Owner',
       block: '👑 Owner',
       unblock: '👑 Owner',

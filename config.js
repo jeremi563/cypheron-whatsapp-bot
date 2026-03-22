@@ -26,6 +26,7 @@ const config = {
   antiViewOnceGroup: true,
   antiDeletePrivate: true,
   antiDeleteGroup: true,
+  antiCall: false,
 
   // ✅ group settings
   antilink: false,
