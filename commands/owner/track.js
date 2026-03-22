@@ -13,14 +13,12 @@ export default {
   name: 'track',
   ownerOnly: true,
   description: 'Track online presence of contacts',
-  async execute(sock, chatJid, sender, msg) {
+  async execute(sock, chatJid, sender, msg, commands, args) {
 
-    const text =
-      msg.message?.conversation ||
-      msg.message?.extendedTextMessage?.text || ''
-
-    const args = text.trim().split(' ')
-    const option = args[1]?.toLowerCase()
+    // ✅ use args parameter passed from index.js
+    const option = args[0]?.toLowerCase()
+    const number = args[1]
+    const specificNumber = args[1]
 
     // show help if no option provided
     if (!option) {
@@ -42,58 +40,55 @@ export default {
 ${config.prefix}track add 254712345678
 
 _Number format: country code + number_
-_No + sign, no spaces_`,
-        quoted: msg
-      })
+_No + sign, no spaces_`
+      }, { quoted: msg })
       return
     }
 
     // --- ADD A CONTACT TO TRACK ---
     if (option === 'add') {
-      const number = args[2]
 
       if (!number) {
         await sock.sendMessage(chatJid, {
-          text: `❌ Please provide a number.\nExample: *${config.prefix}track add 254712345678*`,
-          quoted: msg
-        })
+          text: `❌ Please provide a number.\n\n*Example:* ${config.prefix}track add 254712345678`
+        }, { quoted: msg })
         return
       }
 
-      // clean the number and build JID
       const cleanNumber = number.replace(/[^0-9]/g, '')
       const jid = `${cleanNumber}@s.whatsapp.net`
 
-      // subscribe to their presence
-      await sock.subscribeToPresenceUpdates(jid)
+      try {
+        // ✅ subscribe to their presence
+        await sock.subscribeToPresenceUpdates(jid)
+        startTracking(jid)
 
-      // start tracking
-      startTracking(jid)
-
-      await sock.sendMessage(chatJid, {
-        text:
+        await sock.sendMessage(chatJid, {
+          text:
 `╔════════════════════════╗
 ║   📡 PRESENCE TRACKER   ║
 ╚════════════════════════╝
 
 ✅ *Now tracking:* +${cleanNumber}
 
-The bot will now monitor when this
-contact comes online and goes offline.
+The bot will now monitor when this contact comes online and goes offline.
 
-Type *${config.prefix}track report* to see data.`,
-        quoted: msg
-      })
+Type *${config.prefix}track report* to see data.`
+        }, { quoted: msg })
+
+      } catch (err) {
+        await sock.sendMessage(chatJid, {
+          text: `❌ Failed to track +${cleanNumber}: ${err.message}`
+        }, { quoted: msg })
+      }
 
     // --- REMOVE A CONTACT FROM TRACKING ---
     } else if (option === 'remove') {
-      const number = args[2]
 
       if (!number) {
         await sock.sendMessage(chatJid, {
-          text: `❌ Please provide a number.\nExample: *${config.prefix}track remove 254712345678*`,
-          quoted: msg
-        })
+          text: `❌ Please provide a number.\n\n*Example:* ${config.prefix}track remove 254712345678`
+        }, { quoted: msg })
         return
       }
 
@@ -103,9 +98,8 @@ Type *${config.prefix}track report* to see data.`,
       stopTracking(jid)
 
       await sock.sendMessage(chatJid, {
-        text: `🗑️ Stopped tracking: *+${cleanNumber}*`,
-        quoted: msg
-      })
+        text: `🗑️ Stopped tracking: *+${cleanNumber}*`
+      }, { quoted: msg })
 
     // --- LIST ALL TRACKED CONTACTS ---
     } else if (option === 'list') {
@@ -121,18 +115,17 @@ Type *${config.prefix}track report* to see data.`,
 ⚠️ No contacts being tracked.
 
 Add one with:
-*${config.prefix}track add <number>*`,
-          quoted: msg
-        })
+*${config.prefix}track add <number>*`
+        }, { quoted: msg })
         return
       }
 
       const list = tracked
         .map((jid, index) => {
           const data = getPresenceData(jid)
-          const number = jid.replace('@s.whatsapp.net', '')
+          const num = jid.replace('@s.whatsapp.net', '')
           const status = data?.isOnline ? '🟢 Online' : '🔴 Offline'
-          return `│  ${index + 1}. +${number} — ${status}`
+          return `│  ${index + 1}. +${num} — ${status}`
         })
         .join('\n')
 
@@ -146,13 +139,11 @@ Add one with:
 
 ${list}
 
-Type *${config.prefix}track report* for full details.`,
-        quoted: msg
-      })
+Type *${config.prefix}track report* for full details.`
+      }, { quoted: msg })
 
     // --- GENERATE FULL REPORT ---
     } else if (option === 'report') {
-      const specificNumber = args[2]
 
       if (specificNumber) {
 
@@ -163,16 +154,14 @@ Type *${config.prefix}track report* for full details.`,
 
         if (!data) {
           await sock.sendMessage(chatJid, {
-            text: `❌ *+${cleanNumber}* is not being tracked.\nAdd them with: *${config.prefix}track add ${cleanNumber}*`,
-            quoted: msg
-          })
+            text: `❌ *+${cleanNumber}* is not being tracked.\n\nAdd them with: *${config.prefix}track add ${cleanNumber}*`
+          }, { quoted: msg })
           return
         }
 
-        // build sessions list
         const sessionsList = data.sessions.length > 0
           ? data.sessions
-              .slice(-5) // show last 5 sessions only
+              .slice(-5)
               .map((s, i) =>
                 `│  ${i + 1}. ${formatTime(s.from)} → ${formatTime(s.to)} (${formatDuration(s.duration)})`
               )
@@ -196,9 +185,8 @@ Type *${config.prefix}track report* for full details.`,
 ║   🕐 LAST 5 SESSIONS    ║
 ╠════════════════════════╣
 ${sessionsList}
-╚════════════════════════╝`,
-          quoted: msg
-        })
+╚════════════════════════╝`
+        }, { quoted: msg })
 
       } else {
 
@@ -215,16 +203,15 @@ ${sessionsList}
 ⚠️ No contacts being tracked yet.
 
 Add one with:
-*${config.prefix}track add <number>*`,
-            quoted: msg
-          })
+*${config.prefix}track add <number>*`
+          }, { quoted: msg })
           return
         }
 
         const reportLines = allData.map((data, index) => {
-          const number = data.jid.replace('@s.whatsapp.net', '')
+          const num = data.jid.replace('@s.whatsapp.net', '')
           return (
-`┌─ *${index + 1}. +${number}*
+`┌─ *${index + 1}. +${num}*
 │  Status: ${data.isOnline ? '🟢 Online' : '🔴 Offline'}
 │  Last Online: ${formatTime(data.lastOnline)}
 │  Last Seen: ${formatTime(data.lastSeen)}
@@ -241,14 +228,12 @@ Add one with:
 ╚════════════════════════╝
 
 📊 *Tracking ${allData.length} contact(s)*
-🕐 *Generated:* ${new Date().toLocaleTimeString()}
+🕐 *Generated:* ${new Date().toLocaleTimeString('en-US', { timeZone: config.timezone })}
 
 ${reportLines}
 
-_Type ${config.prefix}track report <number>_
-_for a detailed individual report_`,
-          quoted: msg
-        })
+_Type ${config.prefix}track report <number> for detailed individual report_`
+        }, { quoted: msg })
       }
 
     // --- CLEAR ALL TRACKED CONTACTS ---
@@ -257,13 +242,11 @@ _for a detailed individual report_`,
 
       if (tracked.length === 0) {
         await sock.sendMessage(chatJid, {
-          text: `⚠️ No contacts are currently being tracked.`,
-          quoted: msg
-        })
+          text: `⚠️ No contacts are currently being tracked.`
+        }, { quoted: msg })
         return
       }
 
-      // stop tracking all contacts
       tracked.forEach(jid => stopTracking(jid))
 
       await sock.sendMessage(chatJid, {
@@ -274,15 +257,13 @@ _for a detailed individual report_`,
 
 🗑️ *All tracked contacts cleared!*
 
-${tracked.length} contact(s) removed from tracking.`,
-        quoted: msg
-      })
+${tracked.length} contact(s) removed from tracking.`
+      }, { quoted: msg })
 
     } else {
       await sock.sendMessage(chatJid, {
-        text: `❌ Unknown option. Type *${config.prefix}track* to see all options.`,
-        quoted: msg
-      })
+        text: `❌ Unknown option. Type *${config.prefix}track* to see all options.`
+      }, { quoted: msg })
     }
 
   }
