@@ -59,8 +59,8 @@ _No + sign, no spaces_`
       const jid = `${cleanNumber}@s.whatsapp.net`
 
       try {
-        // ✅ subscribe to their presence
-        await sock.subscribeToPresenceUpdates(jid)
+        // ✅ correct function name in gifted-baileys
+        await sock.presenceSubscribe(jid)
         startTracking(jid)
 
         await sock.sendMessage(chatJid, {
