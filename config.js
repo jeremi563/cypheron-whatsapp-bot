@@ -3,7 +3,7 @@ import 'dotenv/config'
 const config = {
   prefix: '!',
   botName: 'CYPHERON',
-  owner: '254731242169@s.whatsapp.net',
+  owner: '254700581291@s.whatsapp.net',
   ownerLid: process.env.OWNER_LID || '186784386445322@lid',
   timezone: 'Africa/Nairobi',
 
