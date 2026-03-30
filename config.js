@@ -14,7 +14,7 @@ const config = {
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',
-  autoReact: false,
+  autoReact: true,
   reactEmojis: ['❤️', '🔥', '👁️', '🤖', '👏', '🦴', '💯', '✨', '📌', '⚡'],
 
   // ✅ auto typing and recording
@@ -26,7 +26,7 @@ const config = {
   antiViewOnceGroup: true,
   antiDeletePrivate: true,
   antiDeleteGroup: true,
-  antiCall: false,
+  antiCall: true,
 
   // ✅ group settings
   antilink: false,
