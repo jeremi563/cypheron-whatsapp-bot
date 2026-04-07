@@ -1,16 +1,16 @@
 import 'dotenv/config'
 
 const config = {
-  prefix: '!',
+  prefix: '.',
   botName: 'CYPHERON',
-  owner: '254700581291@s.whatsapp.net',
+  owner: '254756109718@s.whatsapp.net',
   ownerLid: process.env.OWNER_LID || '186784386445322@lid',
   timezone: 'Africa/Nairobi',
 
   // ✅ bot features
   autoBio: true,
   autoViewStatus: true,
-  autoLikeStatus: false,
+  autoLikeStatus: true,
   autoReplyStatus: false,
   autoReplyMessage: '👀 Status Seen by *CYPHERON* bot!',
   autoLikeEmoji: '❤️',
@@ -26,17 +26,17 @@ const config = {
   antiViewOnceGroup: true,
   antiDeletePrivate: true,
   antiDeleteGroup: true,
-  antiCall: true,
+  antiCall: false,
 
   // ✅ group settings
   antilink: false,
   antispam: false,
-  welcome: false,
+  welcome: true,
   goodbye: true,
 
   // ✅ auto welcome time settings
   welcomeEnabled: true,
-  welcomeStartHour: 22,
+  welcomeStartHour: 23,
   welcomeEndHour: 6,
   welcomeCooldown: 30,
 
